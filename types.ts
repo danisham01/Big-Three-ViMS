@@ -1,3 +1,4 @@
+
 export enum VisitorType {
   ADHOC = 'ADHOC',
   PREREGISTERED = 'PREREGISTERED',
@@ -24,9 +25,12 @@ export enum QRType {
 export interface Visitor {
   id: string;
   name: string;
-  contact: string;
+  contact: string; // Phone number
+  email?: string; // Specific email field
+  icNumber?: string; // Identification Number
   purpose: string;
-  visitDate: string; // ISO Date string
+  visitDate: string; // ISO Date string (Start Date)
+  endDate?: string; // ISO Date string (End Date)
   type: VisitorType;
   transportMode: TransportMode;
   licensePlate?: string;
@@ -35,6 +39,7 @@ export interface Visitor {
   qrType: QRType;
   timeIn?: string;
   timeOut?: string;
+  registeredBy?: 'SELF' | 'STAFF'; // Track who created it
 }
 
 export interface AccessLog {

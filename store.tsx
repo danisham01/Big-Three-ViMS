@@ -4,7 +4,7 @@ import { Visitor, AccessLog, VisitorType, TransportMode, VisitorStatus, QRType }
 interface StoreContextType {
   visitors: Visitor[];
   logs: AccessLog[];
-  addVisitor: (visitor: Omit<Visitor, 'id' | 'status' | 'qrType'>) => Visitor;
+  addVisitor: (visitor: Omit<Visitor, 'id' | 'qrType' | 'status'> & { status?: VisitorStatus }) => Visitor;
   updateVisitorStatus: (id: string, status: VisitorStatus, reason?: string) => void;
   logAccess: (log: Omit<AccessLog, 'id' | 'timestamp'>) => void;
   getVisitorByCode: (code: string) => Visitor | undefined;
@@ -35,38 +35,42 @@ const INITIAL_VISITORS: Visitor[] = [
   {
     id: '45892',
     name: 'Alice Walker',
-    contact: 'alice@example.com',
+    contact: '+15550101',
+    email: 'alice@example.com',
     purpose: 'Business Meeting',
-    visitDate: new Date().toISOString().split('T')[0],
+    visitDate: new Date().toISOString(),
     type: VisitorType.PREREGISTERED,
     transportMode: TransportMode.NON_CAR,
     status: VisitorStatus.PENDING,
     qrType: QRType.QR3,
+    registeredBy: 'SELF'
   },
   {
     id: '12543',
     name: 'Bob Builder',
-    contact: 'bob@builds.com',
+    contact: '+15550102',
     purpose: 'Maintenance',
-    visitDate: new Date().toISOString().split('T')[0],
+    visitDate: new Date().toISOString(),
     type: VisitorType.ADHOC,
     transportMode: TransportMode.CAR,
     licensePlate: 'ABC-999',
     status: VisitorStatus.APPROVED,
     qrType: QRType.NONE,
     timeIn: new Date(Date.now() - 3600000).toISOString(), // Entered 1 hour ago
+    registeredBy: 'SELF'
   },
   {
     id: '98765',
     name: 'Charlie Chef',
-    contact: 'charlie@food.com',
+    contact: '+15550103',
     purpose: 'Catering',
-    visitDate: new Date().toISOString().split('T')[0],
+    visitDate: new Date().toISOString(),
     type: VisitorType.PREREGISTERED,
     transportMode: TransportMode.CAR,
     licensePlate: 'FOOD-1',
     status: VisitorStatus.APPROVED,
     qrType: QRType.QR2,
+    registeredBy: 'STAFF'
   }
 ];
 
@@ -84,13 +88,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   ]);
 
-  const addVisitor = (data: Omit<Visitor, 'id' | 'status' | 'qrType'>) => {
+  const addVisitor = (data: Omit<Visitor, 'id' | 'qrType' | 'status'> & { status?: VisitorStatus }) => {
     const isAdhoc = data.type === VisitorType.ADHOC;
+    // If status is provided, use it, otherwise default logic
+    const status = data.status || (isAdhoc ? VisitorStatus.APPROVED : VisitorStatus.PENDING);
+    
     const newVisitor: Visitor = {
       ...data,
       id: generateUniqueCode(visitors),
-      status: isAdhoc ? VisitorStatus.APPROVED : VisitorStatus.PENDING,
+      status: status,
       qrType: determineQRType(data.type, data.transportMode),
+      registeredBy: data.registeredBy || 'SELF',
     };
     setVisitors(prev => [newVisitor, ...prev]);
     return newVisitor;

@@ -4,8 +4,9 @@ import { StoreProvider } from './store';
 import { VisitorLanding, VisitorForm, VisitorWallet, VisitorStatusCheck } from './pages/VisitorPages';
 import { OperatorDashboard } from './pages/OperatorPages';
 import { GuardConsole } from './pages/GuardPages';
+import { StaffLogin, StaffDashboard, StaffSharePass } from './pages/StaffPages';
 import { VisitorType } from './types';
-import { Shield, Users, Eye, Search } from 'lucide-react';
+import { Shield, Users, Eye, Search, Home, LayoutDashboard, History, Settings } from 'lucide-react';
 
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
@@ -13,14 +14,16 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
   const isOperator = location.pathname.startsWith('/operator');
   const isGuard = location.pathname.startsWith('/guard');
   const isStatus = location.pathname === '/visitor/status';
+  // Staff pages typically don't have the bottom nav or have a different one, but for simplicity we keep it or hide it.
+  // Let's hide bottom nav for Staff pages to give it a "portal" feel, or keep generic home.
+  const isStaff = location.pathname.startsWith('/staff');
 
   return (
-    <div className="min-h-screen bg-black font-sans selection:bg-indigo-500/30 text-white overflow-x-hidden">
-      {/* Dynamic Background */}
-      <div className="fixed inset-0 z-0">
-        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] rounded-full bg-indigo-600/20 blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] rounded-full bg-purple-600/20 blur-[120px] animate-pulse delay-1000"></div>
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+    <div className="min-h-screen bg-[#050508] font-sans text-white overflow-x-hidden">
+      {/* Darker Dynamic Background */}
+      <div className="fixed inset-0 z-0 bg-gradient-to-b from-[#0f172a] to-[#000000]">
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/10 blur-[100px] animate-pulse"></div>
+        <div className="absolute bottom-[10%] right-[0%] w-[60%] h-[60%] rounded-full bg-indigo-900/10 blur-[120px]"></div>
       </div>
 
       {/* Main Content */}
@@ -29,26 +32,29 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
       </main>
 
       {/* Role Switcher / Navigation (Sticky Bottom for Mobile) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-t border-white/10 pb-safe">
+      {!isStaff && (
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#121217]/90 backdrop-blur-xl border-t border-white/5 pb-safe rounded-t-3xl">
         <div className="max-w-md mx-auto flex justify-around p-3">
-          <Link to="/visitor" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isVisitor && !isStatus ? 'text-blue-400 bg-white/10' : 'text-white/40 hover:text-white'}`}>
-            <Users size={20} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Visitor</span>
-          </Link>
-          <Link to="/visitor/status" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isStatus ? 'text-green-400 bg-white/10' : 'text-white/40 hover:text-white'}`}>
-            <Search size={20} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Status</span>
-          </Link>
-          <Link to="/operator" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isOperator ? 'text-purple-400 bg-white/10' : 'text-white/40 hover:text-white'}`}>
-            <Eye size={20} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Admin</span>
-          </Link>
-          <Link to="/guard" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isGuard ? 'text-orange-400 bg-white/10' : 'text-white/40 hover:text-white'}`}>
-            <Shield size={20} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Guard</span>
-          </Link>
+            {/* Using more generic icons to fit the 'Operator Console' look from screenshot, but mapping to existing routes */}
+            <Link to="/visitor" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isVisitor && !isStatus ? 'text-blue-500' : 'text-gray-500'}`}>
+                <Home size={22} strokeWidth={isVisitor && !isStatus ? 2.5 : 2} />
+                <span className="text-[10px] font-medium">Home</span>
+            </Link>
+            <Link to="/visitor/status" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isStatus ? 'text-blue-500' : 'text-gray-500'}`}>
+                <Search size={22} strokeWidth={isStatus ? 2.5 : 2} />
+                <span className="text-[10px] font-medium">Status</span>
+            </Link>
+            <Link to="/operator" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isOperator ? 'text-blue-500' : 'text-gray-500'}`}>
+                <LayoutDashboard size={22} strokeWidth={isOperator ? 2.5 : 2} />
+                <span className="text-[10px] font-medium">Queue</span>
+            </Link>
+            <Link to="/guard" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isGuard ? 'text-blue-500' : 'text-gray-500'}`}>
+                <Shield size={22} strokeWidth={isGuard ? 2.5 : 2} />
+                <span className="text-[10px] font-medium">Guard</span>
+            </Link>
         </div>
       </nav>
+      )}
     </div>
   );
 };
@@ -73,6 +79,12 @@ const App = () => {
             
             {/* Guard Routes */}
             <Route path="/guard" element={<GuardConsole />} />
+
+            {/* Staff Routes */}
+            <Route path="/staff/login" element={<StaffLogin />} />
+            <Route path="/staff/dashboard" element={<StaffDashboard />} />
+            <Route path="/staff/share/:id" element={<StaffSharePass />} />
+
           </Routes>
         </Layout>
       </HashRouter>
