@@ -4,7 +4,7 @@ import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, StatusBadge } from '../components/GlassComponents';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
 import { VisitorType, TransportMode, VisitorStatus, QRType } from '../types';
-import { User, Car, Check, QrCode, AlertCircle, RefreshCw, Share2, Download } from 'lucide-react';
+import { User, Car, Check, QrCode, AlertCircle, RefreshCw, Share2, Download, Search, Copy } from 'lucide-react';
 
 export const VisitorLanding = () => {
   const navigate = useNavigate();
@@ -38,8 +38,78 @@ export const VisitorLanding = () => {
           </div>
         </div>
       </GlassCard>
+
+      <GlassCard className="hover:bg-white/15 transition-colors cursor-pointer" onClick={() => navigate('/visitor/status')}>
+        <div className="flex items-center gap-4">
+            <div className="p-4 bg-green-500/20 rounded-full text-green-200">
+                <Search size={24} />
+            </div>
+            <div>
+                <h3 className="text-xl font-bold text-white">Check Status</h3>
+                <p className="text-sm text-white/50">Have a code? Check your appointment status here.</p>
+            </div>
+        </div>
+      </GlassCard>
     </div>
   );
+};
+
+export const VisitorStatusCheck = () => {
+    const navigate = useNavigate();
+    const { getVisitorByCode } = useStore();
+    const [code, setCode] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleCheck = (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        
+        // Simulation delay
+        setTimeout(() => {
+            const visitor = getVisitorByCode(code);
+            setLoading(false);
+            if (visitor) {
+                navigate(`/visitor/wallet/${visitor.id}`);
+            } else {
+                setError('Invalid code. Please check your 5-digit code and try again.');
+            }
+        }, 800);
+    };
+
+    return (
+        <div className="max-w-md mx-auto pt-10 px-4">
+            <Button variant="secondary" onClick={() => navigate('/visitor')} className="mb-4 text-sm py-2 px-4">
+                &larr; Back
+            </Button>
+            
+            <GlassCard title="Check Appointment Status">
+                <form onSubmit={handleCheck}>
+                    <div className="mb-6">
+                        <p className="text-white/60 text-sm mb-4">Enter your 5-digit unique code to view your pass and current status.</p>
+                        <Input 
+                            value={code}
+                            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                            placeholder="e.g., 12345"
+                            className="text-center text-2xl tracking-widest font-mono"
+                            maxLength={5}
+                            autoFocus
+                        />
+                    </div>
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-xl text-red-200 text-sm flex items-center gap-2">
+                            <AlertCircle size={16} />
+                            {error}
+                        </div>
+                    )}
+                    <Button type="submit" disabled={loading || code.length < 5} className="w-full">
+                        {loading ? 'Checking...' : 'Find Appointment'}
+                    </Button>
+                </form>
+            </GlassCard>
+        </div>
+    );
 };
 
 export const VisitorForm = ({ type }: { type: VisitorType }) => {
@@ -159,11 +229,8 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
 export const VisitorWallet = () => {
     const { getVisitorByCode } = useStore();
     const navigate = useNavigate();
-    // In real app, use useParams. Here we assume URL parsing is handled by parent or simplified 
-    // Since HashRouter in a single file is complex, we will grab ID from URL manually in parent or props
-    // But for this structure, let's just assume we are passing ID via window location hash for simplicity if params fail,
-    // OR ideally rely on React Router properly.
-    // Let's rely on React Router hooks.
+    const [copied, setCopied] = useState(false);
+    
     const visitorId = window.location.hash.split('/').pop(); 
     const visitor = getVisitorByCode(visitorId || '');
 
@@ -177,8 +244,66 @@ export const VisitorWallet = () => {
     }
 
     const refreshStatus = () => {
-        // Just force re-render or nav logic
         navigate(0);
+    };
+
+    const handleCopyCode = () => {
+        navigator.clipboard.writeText(visitor.id);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleDownloadQR = () => {
+        const svg = document.getElementById('qr-code-svg');
+        if (!svg) return;
+
+        // Serialize SVG
+        const serializer = new XMLSerializer();
+        let source = serializer.serializeToString(svg);
+
+        // Add namespaces if missing (sometimes needed for pure SVG data URI)
+        if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
+            source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = 500;
+        canvas.height = 500;
+        const ctx = canvas.getContext('2d');
+        if(!ctx) return;
+
+        const img = new Image();
+        img.onload = () => {
+            // Fill white background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Draw SVG
+            ctx.drawImage(img, 25, 25, 450, 450);
+            
+            // Trigger download
+            const a = document.createElement('a');
+            a.download = `pass-${visitor.id}.png`;
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+        };
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
+    };
+
+    const handleShare = async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `Visitor Pass: ${visitor.name}`,
+                    text: `My Visitor Access Code is: ${visitor.id}`,
+                    url: window.location.href
+                });
+            } catch (error) {
+                console.log('Error sharing', error);
+            }
+        } else {
+            handleCopyCode();
+            alert('Code copied to clipboard!');
+        }
     };
 
     return (
@@ -193,48 +318,84 @@ export const VisitorWallet = () => {
                 </div>
                 
                 <h2 className="text-2xl font-bold text-white mb-1">{visitor.name}</h2>
-                <p className="text-white/50 text-sm mb-6">{visitor.type} • {visitor.transportMode}</p>
+                <p className="text-white/50 text-sm mb-4">{visitor.type} • {visitor.transportMode}</p>
+                
+                {/* 5-Digit Code Display */}
+                <div className="bg-white/10 border border-white/20 rounded-xl p-4 mb-6">
+                    <p className="text-xs text-white/40 uppercase tracking-widest mb-2">Unique Code</p>
+                    <div className="flex items-center justify-center gap-3">
+                         <p className="text-4xl font-mono font-bold text-white tracking-widest">{visitor.id}</p>
+                         <button 
+                            onClick={handleCopyCode} 
+                            className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-white/60 hover:text-white"
+                            title="Copy Code"
+                         >
+                            {copied ? <Check size={20} className="text-green-400"/> : <Copy size={20}/>}
+                         </button>
+                    </div>
+                </div>
 
-                {visitor.status === VisitorStatus.APPROVED ? (
+                {/* Show QR and Actions for Approved AND Pending */}
+                {visitor.status !== VisitorStatus.REJECTED ? (
                     <div className="animate-in zoom-in duration-500">
-                        <QRCodeDisplay value={visitor.id} type={visitor.qrType} />
-                        
-                        <div className="mt-6 grid grid-cols-2 gap-4 text-left">
-                            <div className="bg-white/5 p-3 rounded-lg">
-                                <p className="text-xs text-white/40 uppercase">Valid Date</p>
-                                <p className="text-white font-medium">{visitor.visitDate}</p>
-                            </div>
-                            <div className="bg-white/5 p-3 rounded-lg">
-                                <p className="text-xs text-white/40 uppercase">Access</p>
-                                <p className="text-white font-medium">
-                                    {visitor.qrType === QRType.QR1 ? 'Front Gate' : 
-                                     visitor.qrType === QRType.QR2 ? 'Elevator' : 
-                                     visitor.qrType === QRType.QR3 ? 'Full Access' : 'LPR Entry'}
-                                </p>
-                            </div>
+                        <div className={visitor.status === VisitorStatus.PENDING ? "opacity-75 grayscale-[0.5] transition-all" : ""}>
+                            <QRCodeDisplay 
+                                value={visitor.id} 
+                                type={visitor.qrType} 
+                                label={visitor.status === VisitorStatus.PENDING ? "Pass Inactive - Pending Approval" : undefined}
+                            />
                         </div>
 
                         <div className="flex gap-2 mt-6">
-                            <Button variant="secondary" className="flex-1 text-sm flex items-center justify-center gap-2">
+                            <Button 
+                                variant="secondary" 
+                                className="flex-1 text-sm flex items-center justify-center gap-2"
+                                onClick={handleDownloadQR}
+                            >
                                 <Download size={16}/> Save
                             </Button>
-                            <Button variant="secondary" className="flex-1 text-sm flex items-center justify-center gap-2">
+                            <Button 
+                                variant="secondary" 
+                                className="flex-1 text-sm flex items-center justify-center gap-2"
+                                onClick={handleShare}
+                            >
                                 <Share2 size={16}/> Share
                             </Button>
                         </div>
-                    </div>
-                ) : visitor.status === VisitorStatus.PENDING ? (
-                    <div className="py-10 bg-white/5 rounded-xl border border-white/10">
-                        <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-                        <h3 className="text-lg font-bold text-white">Pending Approval</h3>
-                        <p className="text-white/50 text-sm mt-2 px-4">
-                            Your request has been sent to the host. Please refresh this page shortly.
-                        </p>
-                        <Button variant="outline" onClick={refreshStatus} className="mt-6">
-                            <RefreshCw size={16} className="mr-2 inline" /> Check Status
-                        </Button>
+                        
+                        {/* Status Specific Messages below actions */}
+                        {visitor.status === VisitorStatus.APPROVED ? (
+                             <div className="mt-6 grid grid-cols-2 gap-4 text-left">
+                                <div className="bg-white/5 p-3 rounded-lg">
+                                    <p className="text-xs text-white/40 uppercase">Valid Date</p>
+                                    <p className="text-white font-medium">{visitor.visitDate}</p>
+                                </div>
+                                <div className="bg-white/5 p-3 rounded-lg">
+                                    <p className="text-xs text-white/40 uppercase">Access</p>
+                                    <p className="text-white font-medium">
+                                        {visitor.qrType === QRType.QR1 ? 'Front Gate' : 
+                                         visitor.qrType === QRType.QR2 ? 'Elevator' : 
+                                         visitor.qrType === QRType.QR3 ? 'Full Access' : 'LPR Entry'}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mt-6 py-4 px-3 bg-yellow-500/10 rounded-xl border border-yellow-500/20">
+                                <div className="flex flex-col items-center">
+                                     <div className="w-6 h-6 border-2 border-yellow-500/30 border-t-yellow-500 rounded-full animate-spin mb-2"></div>
+                                     <h3 className="text-yellow-200 font-bold text-sm">Awaiting Approval</h3>
+                                     <p className="text-white/50 text-xs mt-1 px-2 text-center">
+                                         You can save your pass now. It will automatically activate once approved.
+                                     </p>
+                                     <Button variant="outline" onClick={refreshStatus} className="mt-3 text-xs py-1.5 px-3 h-auto">
+                                        <RefreshCw size={12} className="mr-1 inline" /> Check Status
+                                     </Button>
+                                 </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
+                    // REJECTED STATE
                     <div className="py-10 bg-red-500/10 rounded-xl border border-red-500/20">
                         <AlertCircle size={48} className="text-red-400 mx-auto mb-4" />
                         <h3 className="text-lg font-bold text-white">Request Rejected</h3>

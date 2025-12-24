@@ -22,9 +22,18 @@ const determineQRType = (type: VisitorType, mode: TransportMode): QRType => {
   return mode === TransportMode.CAR ? QRType.QR2 : QRType.QR3;
 };
 
+// Helper to generate 5-digit unique code
+const generateUniqueCode = (existingVisitors: Visitor[]) => {
+  let code = '';
+  do {
+    code = Math.floor(10000 + Math.random() * 90000).toString();
+  } while (existingVisitors.some(v => v.id === code));
+  return code;
+};
+
 const INITIAL_VISITORS: Visitor[] = [
   {
-    id: 'v-123',
+    id: '45892',
     name: 'Alice Walker',
     contact: 'alice@example.com',
     purpose: 'Business Meeting',
@@ -35,7 +44,7 @@ const INITIAL_VISITORS: Visitor[] = [
     qrType: QRType.QR3,
   },
   {
-    id: 'v-456',
+    id: '12543',
     name: 'Bob Builder',
     contact: 'bob@builds.com',
     purpose: 'Maintenance',
@@ -48,7 +57,7 @@ const INITIAL_VISITORS: Visitor[] = [
     timeIn: new Date(Date.now() - 3600000).toISOString(), // Entered 1 hour ago
   },
   {
-    id: 'v-789',
+    id: '98765',
     name: 'Charlie Chef',
     contact: 'charlie@food.com',
     purpose: 'Catering',
@@ -66,7 +75,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [logs, setLogs] = useState<AccessLog[]>([
     {
        id: 'l-1',
-       visitorId: 'v-456',
+       visitorId: '12543',
        visitorName: 'Bob Builder',
        timestamp: new Date(Date.now() - 3600000).toISOString(),
        action: 'ENTRY',
@@ -79,7 +88,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const isAdhoc = data.type === VisitorType.ADHOC;
     const newVisitor: Visitor = {
       ...data,
-      id: `v-${Date.now().toString().slice(-4)}`,
+      id: generateUniqueCode(visitors),
       status: isAdhoc ? VisitorStatus.APPROVED : VisitorStatus.PENDING,
       qrType: determineQRType(data.type, data.transportMode),
     };

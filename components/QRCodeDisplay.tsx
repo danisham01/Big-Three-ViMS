@@ -52,7 +52,12 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ value, type, label
 
   return (
     <div className="bg-white p-4 rounded-xl shadow-2xl flex flex-col items-center">
-      <svg viewBox="0 0 100 100" className={`w-48 h-48 ${getTypeColor(type)}`}>
+      <svg 
+        id="qr-code-svg" 
+        viewBox="0 0 100 100" 
+        className={`w-48 h-48 ${getTypeColor(type)}`} 
+        xmlns="http://www.w3.org/2000/svg"
+      >
         {/* Finder Patterns */}
         <rect x="0" y="0" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="5" />
         <rect x="10" y="10" width="10" height="10" fill="currentColor" />

@@ -1,9 +1,11 @@
 import React from 'react';
 
 // Container
-interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
   children?: React.ReactNode;
   title?: string;
+  className?: string;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
 }
 
 export const GlassCard = ({ children, className = '', title, ...props }: GlassCardProps) => (
@@ -18,8 +20,13 @@ export const GlassCard = ({ children, className = '', title, ...props }: GlassCa
 );
 
 // Button
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'outline';
+  className?: string;
+  children?: React.ReactNode;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean;
 }
 
 export const Button = ({ children, variant = 'primary', className = '', ...props }: ButtonProps) => {
@@ -41,8 +48,16 @@ export const Button = ({ children, variant = 'primary', className = '', ...props
 };
 
 // Input
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
+  className?: string;
+  value?: string | number | readonly string[];
+  onChange?: React.ChangeEventHandler<HTMLInputElement>;
+  placeholder?: string;
+  required?: boolean;
+  type?: string;
+  maxLength?: number;
+  autoFocus?: boolean;
 }
 
 export const Input = ({ label, className = '', ...props }: InputProps) => (
@@ -56,9 +71,12 @@ export const Input = ({ label, className = '', ...props }: InputProps) => (
 );
 
 // Select
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   options: { value: string; label: string }[];
+  className?: string;
+  value?: string | number | readonly string[];
+  onChange?: React.ChangeEventHandler<HTMLSelectElement>;
 }
 
 export const Select = ({ label, options, className = '', ...props }: SelectProps) => (

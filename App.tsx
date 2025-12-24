@@ -1,17 +1,18 @@
 import React from 'react';
 import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { StoreProvider } from './store';
-import { VisitorLanding, VisitorForm, VisitorWallet } from './pages/VisitorPages';
+import { VisitorLanding, VisitorForm, VisitorWallet, VisitorStatusCheck } from './pages/VisitorPages';
 import { OperatorDashboard } from './pages/OperatorPages';
 import { GuardConsole } from './pages/GuardPages';
 import { VisitorType } from './types';
-import { Shield, Users, Eye } from 'lucide-react';
+import { Shield, Users, Eye, Search } from 'lucide-react';
 
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   const location = useLocation();
   const isVisitor = location.pathname.startsWith('/visitor');
   const isOperator = location.pathname.startsWith('/operator');
   const isGuard = location.pathname.startsWith('/guard');
+  const isStatus = location.pathname === '/visitor/status';
 
   return (
     <div className="min-h-screen bg-black font-sans selection:bg-indigo-500/30 text-white overflow-x-hidden">
@@ -30,9 +31,13 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
       {/* Role Switcher / Navigation (Sticky Bottom for Mobile) */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-t border-white/10 pb-safe">
         <div className="max-w-md mx-auto flex justify-around p-3">
-          <Link to="/visitor" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isVisitor ? 'text-blue-400 bg-white/10' : 'text-white/40 hover:text-white'}`}>
+          <Link to="/visitor" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isVisitor && !isStatus ? 'text-blue-400 bg-white/10' : 'text-white/40 hover:text-white'}`}>
             <Users size={20} />
             <span className="text-[10px] font-bold uppercase tracking-wider">Visitor</span>
+          </Link>
+          <Link to="/visitor/status" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isStatus ? 'text-green-400 bg-white/10' : 'text-white/40 hover:text-white'}`}>
+            <Search size={20} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Status</span>
           </Link>
           <Link to="/operator" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isOperator ? 'text-purple-400 bg-white/10' : 'text-white/40 hover:text-white'}`}>
             <Eye size={20} />
@@ -60,6 +65,7 @@ const App = () => {
             <Route path="/visitor" element={<VisitorLanding />} />
             <Route path="/visitor/adhoc" element={<VisitorForm type={VisitorType.ADHOC} />} />
             <Route path="/visitor/prereg" element={<VisitorForm type={VisitorType.PREREGISTERED} />} />
+            <Route path="/visitor/status" element={<VisitorStatusCheck />} />
             <Route path="/visitor/wallet/:id" element={<VisitorWallet />} />
             
             {/* Operator Routes */}

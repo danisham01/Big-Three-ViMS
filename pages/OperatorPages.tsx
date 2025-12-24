@@ -106,31 +106,33 @@ export const OperatorDashboard = () => {
                 </div>
             ) : (
                 pendingVisitors.map(visitor => (
-                    <GlassCard key={visitor.id} className="flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div>
-                            <div className="flex items-center gap-3">
-                                <h3 className="text-xl font-bold text-white">{visitor.name}</h3>
-                                <StatusBadge status={visitor.status} />
+                    <React.Fragment key={visitor.id}>
+                        <GlassCard className="flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div>
+                                <div className="flex items-center gap-3">
+                                    <h3 className="text-xl font-bold text-white">{visitor.name}</h3>
+                                    <StatusBadge status={visitor.status} />
+                                </div>
+                                <p className="text-white/60 text-sm mt-1">{visitor.purpose} • {visitor.visitDate}</p>
+                                <p className="text-white/40 text-xs mt-1">Transport: {visitor.transportMode} {visitor.licensePlate && `(${visitor.licensePlate})`}</p>
                             </div>
-                            <p className="text-white/60 text-sm mt-1">{visitor.purpose} • {visitor.visitDate}</p>
-                            <p className="text-white/40 text-xs mt-1">Transport: {visitor.transportMode} {visitor.licensePlate && `(${visitor.licensePlate})`}</p>
-                        </div>
-                        <div className="flex gap-2 w-full md:w-auto">
-                            <Button 
-                                variant="secondary" 
-                                className="flex-1 md:flex-none bg-red-500/10 hover:bg-red-500/30 text-red-200 border-red-500/20"
-                                onClick={() => updateVisitorStatus(visitor.id, VisitorStatus.REJECTED, 'Did not meet criteria')}
-                            >
-                                <XCircle size={18} className="mr-2 inline" /> Reject
-                            </Button>
-                            <Button 
-                                className="flex-1 md:flex-none bg-green-500 hover:bg-green-600"
-                                onClick={() => updateVisitorStatus(visitor.id, VisitorStatus.APPROVED)}
-                            >
-                                <CheckCircle size={18} className="mr-2 inline" /> Approve
-                            </Button>
-                        </div>
-                    </GlassCard>
+                            <div className="flex gap-2 w-full md:w-auto">
+                                <Button 
+                                    variant="secondary" 
+                                    className="flex-1 md:flex-none bg-red-500/10 hover:bg-red-500/30 text-red-200 border-red-500/20"
+                                    onClick={() => updateVisitorStatus(visitor.id, VisitorStatus.REJECTED, 'Did not meet criteria')}
+                                >
+                                    <XCircle size={18} className="mr-2 inline" /> Reject
+                                </Button>
+                                <Button 
+                                    className="flex-1 md:flex-none bg-green-500 hover:bg-green-600"
+                                    onClick={() => updateVisitorStatus(visitor.id, VisitorStatus.APPROVED)}
+                                >
+                                    <CheckCircle size={18} className="mr-2 inline" /> Approve
+                                </Button>
+                            </div>
+                        </GlassCard>
+                    </React.Fragment>
                 ))
             )}
         </div>
