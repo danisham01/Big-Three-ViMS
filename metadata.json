@@ -1,0 +1,5 @@
+{
+  "name": "Big Three VMS",
+  "description": "A modern, glassmorphism-styled Visitor Management System with Ad-hoc and Pre-registered flows, LPR integration, and multi-role access control.",
+  "requestFramePermissions": []
+}
