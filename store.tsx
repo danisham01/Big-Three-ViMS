@@ -1,17 +1,20 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Visitor, AccessLog, VisitorType, TransportMode, VisitorStatus, QRType, User, UserRole, Notification, BlacklistRecord } from './types';
+import { Visitor, AccessLog, VisitorType, TransportMode, VisitorStatus, QRType, User, UserRole, Notification, BlacklistRecord, LPRLog } from './types';
 
 interface StoreContextType {
   visitors: Visitor[];
   logs: AccessLog[];
   notifications: Notification[];
   blacklist: BlacklistRecord[];
+  lprLogs: LPRLog[];
   currentUser: User | null;
   addVisitor: (visitor: Omit<Visitor, 'id' | 'qrType' | 'status'> & { status?: VisitorStatus }) => Visitor;
   updateVisitorStatus: (id: string, status: VisitorStatus, reason?: string) => void;
   updateVisitor: (id: string, updates: Partial<Visitor>) => void;
   logAccess: (log: Omit<AccessLog, 'id' | 'timestamp'>) => void;
+  addLPRLog: (log: Omit<LPRLog, 'id' | 'timestamp'>) => void;
+  clearLPRLogs: () => void;
   markNotificationRead: (id: string) => void;
   getVisitorByCode: (code: string) => Visitor | undefined;
   getVisitorByPlate: (plate: string) => Visitor | undefined;
@@ -28,6 +31,7 @@ const VALID_USERS = [
   { username: 'admin', password: '1', role: UserRole.ADMIN, fullName: 'System Admin' },
   { username: 'staff1', password: '1', role: UserRole.STAFF, fullName: 'Luqman Staff' },
   { username: 'guard1', password: '1', role: UserRole.ADMIN, fullName: 'Gate Guard (Admin Priv)' },
+  { username: 'lpr', password: '1', role: UserRole.LPR_READER, fullName: 'LPR Scanning Terminal' },
 ];
 
 const determineQRType = (type: VisitorType, mode: TransportMode): QRType => {
@@ -52,6 +56,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [blacklist, setBlacklist] = useState<BlacklistRecord[]>([]);
+  const [lprLogs, setLprLogs] = useState<LPRLog[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('vms_session');
     return saved ? JSON.parse(saved) : null;
@@ -180,6 +185,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const addLPRLog = (logData: Omit<LPRLog, 'id' | 'timestamp'>) => {
+    const newLog: LPRLog = {
+      ...logData,
+      id: `lpr-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+    };
+    setLprLogs(prev => [newLog, ...prev]);
+  };
+
+  const clearLPRLogs = () => setLprLogs([]);
+
   const getVisitorByCode = (code: string) => visitors.find(v => v.id === code);
   const getVisitorByPlate = (plate: string) => visitors.find(v => normalizePlate(v.licensePlate) === normalizePlate(plate));
 
@@ -189,11 +205,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         logs, 
         notifications,
         blacklist,
+        lprLogs,
         currentUser,
         addVisitor, 
         updateVisitorStatus, 
         updateVisitor,
-        logAccess, 
+        logAccess,
+        addLPRLog,
+        clearLPRLogs,
         markNotificationRead,
         getVisitorByCode, 
         getVisitorByPlate,

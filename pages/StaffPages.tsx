@@ -40,6 +40,7 @@ export const StaffLogin = () => {
   useEffect(() => {
     if (currentUser) {
         if (currentUser.role === UserRole.ADMIN) navigate('/operator');
+        else if (currentUser.role === UserRole.LPR_READER) navigate('/lpr');
         else navigate('/staff/dashboard');
     }
   }, [currentUser, navigate]);
@@ -62,7 +63,7 @@ export const StaffLogin = () => {
     try {
         const success = await login(username.trim(), password);
         if (!success) {
-            setError('Invalid credentials. Hint: use admin / password123');
+            setError('Invalid credentials. Hint: use lpr / 1 for LPR Terminal');
         }
     } catch (err) {
         setError('An error occurred. Please try again.');

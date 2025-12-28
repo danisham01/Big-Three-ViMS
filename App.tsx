@@ -7,51 +7,72 @@ import { OperatorDashboard } from './pages/OperatorPages';
 import { GuardConsole } from './pages/GuardPages';
 import { StaffLogin, StaffDashboard, StaffSharePass } from './pages/StaffPages';
 import { BlacklistPage } from './pages/BlacklistPage';
+import { LPRDetectionPage } from './pages/LPRPage';
 import { ChatBot } from './components/ChatBot';
 import { VisitorType, UserRole } from './types';
-import { Shield, Users, Eye, Search, Home, LayoutDashboard, History, Settings, UserCircle, Briefcase, Ban } from 'lucide-react';
+import { Shield, Users, Eye, Search, Home, LayoutDashboard, History, Settings, UserCircle, Briefcase, Ban, Scan } from 'lucide-react';
 
 const Navigation = () => {
   const { currentUser } = useStore();
   const location = useLocation();
   const path = location.pathname;
+  const search = location.search;
 
   const isActive = (p: string) => path === p || (p !== '/visitor' && path.startsWith(p));
+  const isLPRHistory = path === '/lpr' && search.includes('view=history');
+  const isLPRHome = path === '/lpr' && !search.includes('view=history');
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#121217]/90 backdrop-blur-xl border-t border-white/5 pb-safe rounded-t-3xl">
       <div className="max-w-md mx-auto flex justify-around p-3">
-          {/* Home Dashboard */}
-          <Link to="/visitor" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/visitor') && !path.includes('/status') ? 'text-blue-500' : 'text-gray-500'}`}>
-              <Home size={22} />
-              <span className="text-[10px] font-medium">{currentUser ? 'Home' : 'Home'}</span>
-          </Link>
           
-          <Link to="/visitor/status" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/visitor/status') ? 'text-blue-500' : 'text-gray-500'}`}>
-              <Search size={22} />
-              <span className="text-[10px] font-medium">Status</span>
-          </Link>
-
-          {/* Admin Tools - Simplified Nav */}
-          {currentUser && currentUser.role === UserRole.ADMIN && (
-              <>
-                  <Link to="/guard" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/guard') ? 'text-blue-500' : 'text-gray-500'}`}>
-                      <Shield size={22} />
-                      <span className="text-[10px] font-medium">Guard</span>
-                  </Link>
-                  <Link to="/blacklist" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/blacklist') ? 'text-red-500' : 'text-gray-500'}`}>
-                      <Ban size={22} />
-                      <span className="text-[10px] font-medium">Ban</span>
-                  </Link>
-              </>
-          )}
-
-          {/* Login/Profile Link */}
-          {!currentUser && (
-              <Link to="/staff/login" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/staff/login') ? 'text-blue-500' : 'text-gray-500'}`}>
-                  <UserCircle size={22} />
-                  <span className="text-[10px] font-medium">Staff Login</span>
+          {/* LPR TERMINAL VIEW */}
+          {currentUser && currentUser.role === UserRole.LPR_READER ? (
+            <>
+                <Link to="/lpr" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isLPRHome ? 'text-blue-500' : 'text-gray-500'}`}>
+                    <Home size={22} />
+                    <span className="text-[10px] font-medium">Home</span>
+                </Link>
+                <Link to="/lpr?view=history" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isLPRHistory ? 'text-blue-500' : 'text-gray-500'}`}>
+                    <History size={22} />
+                    <span className="text-[10px] font-medium">History</span>
+                </Link>
+            </>
+          ) : (
+            <>
+              {/* STANDARD VIEW */}
+              <Link to="/visitor" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/visitor') && !path.includes('/status') ? 'text-blue-500' : 'text-gray-500'}`}>
+                  <Home size={22} />
+                  <span className="text-[10px] font-medium">Home</span>
               </Link>
+              
+              <Link to="/visitor/status" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/visitor/status') ? 'text-blue-500' : 'text-gray-500'}`}>
+                  <Search size={22} />
+                  <span className="text-[10px] font-medium">Status</span>
+              </Link>
+
+              {/* Admin Tools */}
+              {currentUser && currentUser.role === UserRole.ADMIN && (
+                  <>
+                      <Link to="/guard" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/guard') ? 'text-blue-500' : 'text-gray-500'}`}>
+                          <Shield size={22} />
+                          <span className="text-[10px] font-medium">Guard</span>
+                      </Link>
+                      <Link to="/blacklist" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/blacklist') ? 'text-red-500' : 'text-gray-500'}`}>
+                          <Ban size={22} />
+                          <span className="text-[10px] font-medium">Ban</span>
+                      </Link>
+                  </>
+              )}
+
+              {/* Login/Profile Link */}
+              {!currentUser && (
+                  <Link to="/staff/login" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/staff/login') ? 'text-blue-500' : 'text-gray-500'}`}>
+                      <UserCircle size={22} />
+                      <span className="text-[10px] font-medium">Staff Login</span>
+                  </Link>
+              )}
+            </>
           )}
       </div>
     </nav>
@@ -94,6 +115,7 @@ const App = () => {
             <Route path="/staff/login" element={<StaffLogin />} />
             <Route path="/staff/dashboard" element={<StaffDashboard />} />
             <Route path="/staff/share/:id" element={<StaffSharePass />} />
+            <Route path="/lpr" element={<LPRDetectionPage />} />
           </Routes>
         </Layout>
       </HashRouter>

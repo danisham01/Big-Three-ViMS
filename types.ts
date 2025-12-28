@@ -26,6 +26,7 @@ export enum QRType {
 export enum UserRole {
   ADMIN = 'ADMIN',
   STAFF = 'STAFF',
+  LPR_READER = 'LPR_READER',
 }
 
 export interface User {
@@ -94,6 +95,21 @@ export interface AccessLog {
   location: 'FRONT_GATE' | 'ELEVATOR';
   method: 'QR' | 'LPR' | 'MANUAL';
   details?: string;
+}
+
+export interface LPRLog {
+  id: string;
+  plate: string;
+  make: string;
+  model: string;
+  confidence: number;
+  thumbnail: string;
+  timestamp: string;
+  mode: 'ENTRY' | 'EXIT';
+  status: 'Approved' | 'Rejected' | 'Blacklisted' | 'Pending' | 'Unknown';
+  visitorId?: string;
+  requestorName?: string;
+  phoneNumber?: string;
 }
 
 export interface Stats {

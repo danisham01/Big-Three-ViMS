@@ -5,7 +5,7 @@ import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, StatusBadge, LoadingOverlay, Toast } from '../components/GlassComponents';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
 import { VisitorType, TransportMode, VisitorStatus, QRType, UserRole } from '../types';
-import { User, Car, Check, AlertCircle, RefreshCw, Share2, Download, Copy, Building2, ChevronRight, ArrowLeft, HelpCircle, Phone, FileText, Briefcase, Calendar, Clock, X, Search, ShieldCheck, Mail, Camera, Image as ImageIcon, CreditCard, Bike, MapPin, Hash, FileUp, Upload, Ban } from 'lucide-react';
+import { User, Car, Check, AlertCircle, RefreshCw, Share2, Download, Copy, Building2, ChevronRight, ArrowLeft, HelpCircle, Phone, FileText, Briefcase, Calendar, Clock, X, Search, ShieldCheck, Mail, Camera, Image as ImageIcon, CreditCard, Bike, MapPin, Hash, FileUp, Upload, Ban, Scan } from 'lucide-react';
 import { StaffDashboard } from './StaffPages';
 import { OperatorDashboard } from './OperatorPages';
 
@@ -86,7 +86,7 @@ export const VisitorLanding = () => {
           </div>
       </div>
 
-      <div className="text-center mb-auto">
+      <div className="text-center mb-auto mt-6 space-y-4">
         <p className="text-white/40 text-sm">
             Are you a staff? <Link to="/staff/login" className="text-blue-500 font-bold hover:underline">Login as Staff</Link>
         </p>
