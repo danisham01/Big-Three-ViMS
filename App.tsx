@@ -6,6 +6,7 @@ import { VisitorLanding, VisitorForm, VisitorWallet, VisitorStatusCheck } from '
 import { OperatorDashboard } from './pages/OperatorPages';
 import { GuardConsole } from './pages/GuardPages';
 import { StaffLogin, StaffDashboard, StaffSharePass } from './pages/StaffPages';
+import { ChatBot } from './components/ChatBot';
 import { VisitorType, UserRole } from './types';
 import { Shield, Users, Eye, Search, Home, LayoutDashboard, History, Settings, UserCircle, Briefcase } from 'lucide-react';
 
@@ -76,6 +77,7 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
         {children}
       </main>
 
+      <ChatBot />
       <Navigation />
     </div>
   );

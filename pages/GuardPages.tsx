@@ -66,26 +66,49 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
         }, 1200);
     };
 
+    // Determine border color based on status
+    const getBorderClass = () => {
+        if (!message) return 'border-white/5';
+        if (message.type === 'success') return 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)]';
+        if (message.type === 'error') return 'border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]';
+        return 'border-white/5';
+    };
+
     return (
-        <GlassCard className="h-full flex flex-col group hover:border-white/20 transition-all duration-500">
-            <div className="flex items-center gap-3 mb-6">
-                <div className={`p-3 rounded-2xl ${type === 'FRONT_GATE' ? 'bg-blue-500/10 text-blue-400' : 'bg-orange-500/10 text-orange-400'} group-hover:scale-110 transition-transform duration-500`}>
-                    <Scan size={24} />
+        <GlassCard className={`h-full flex flex-col group transition-all duration-500 border-2 ${getBorderClass()}`}>
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <div className={`p-3 rounded-2xl ${type === 'FRONT_GATE' ? 'bg-blue-500/10 text-blue-400' : 'bg-orange-500/10 text-orange-400'} group-hover:scale-110 transition-transform duration-500`}>
+                        <Scan size={24} />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-white text-lg">{name}</h3>
+                        <p className="text-[10px] text-white/30 uppercase tracking-widest">Scanning Point</p>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="font-bold text-white text-lg">{name}</h3>
-                    <p className="text-[10px] text-white/30 uppercase tracking-widest">Scanning Point</p>
-                </div>
+                {message && (
+                    <div className={`animate-in fade-in zoom-in duration-300`}>
+                         {message.type === 'success' ? (
+                             <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                                 <CheckCircle2 size={18} />
+                             </div>
+                         ) : (
+                             <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400">
+                                 <ShieldAlert size={18} />
+                             </div>
+                         )}
+                    </div>
+                )}
             </div>
             
             <div className="flex-1 flex flex-col justify-center gap-4">
-                <div className="relative">
+                <div className="relative transform transition-transform duration-300 group-focus-within:scale-[1.02]">
                     <Input 
                         placeholder={allowLPR ? "QR or License Plate" : "Scan QR Code"}
                         value={input}
                         disabled={isLoading}
                         onChange={(e) => setInput(e.target.value)}
-                        className="text-center font-mono tracking-widest !mb-0 h-14"
+                        className={`text-center font-mono tracking-widest !mb-0 h-14 transition-all duration-300 ${message?.type === 'error' ? 'ring-2 ring-red-500/50' : ''}`}
                     />
                     {isLoading && (
                         <div className="absolute right-4 top-1/2 -translate-y-1/2">

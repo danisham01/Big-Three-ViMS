@@ -30,6 +30,15 @@
       .scanner-line {
         animation: scanner-line 3s linear infinite;
       }
+      
+      /* Hide scrollbar but allow scrolling */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
     </style>
   <script type="importmap">
 {
@@ -41,7 +50,8 @@
     "recharts": "https://esm.sh/recharts@^3.6.0",
     "react-router-dom": "https://esm.sh/react-router-dom@^7.11.0",
     "react-qr-reader": "https://esm.sh/react-qr-reader@3.0.0-beta.1",
-    "react-qr-code": "https://esm.sh/react-qr-code@^2.0.15"
+    "react-qr-code": "https://esm.sh/react-qr-code@^2.0.15",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0"
   }
 }
 </script>
