@@ -4,8 +4,10 @@ import { useNavigate, Link, useParams } from 'react-router-dom';
 import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, StatusBadge, LoadingOverlay, Toast } from '../components/GlassComponents';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
-import { VisitorType, TransportMode, VisitorStatus, QRType } from '../types';
+import { VisitorType, TransportMode, VisitorStatus, QRType, UserRole } from '../types';
 import { User, Car, Check, AlertCircle, RefreshCw, Share2, Download, Copy, Building2, ChevronRight, ArrowLeft, HelpCircle, Phone, FileText, Briefcase, Calendar, Clock, X, Search, ShieldCheck, Mail, Camera, Image as ImageIcon, CreditCard, Bike, MapPin, Hash, FileUp, Upload, Ban } from 'lucide-react';
+import { StaffDashboard } from './StaffPages';
+import { OperatorDashboard } from './OperatorPages';
 
 const PURPOSE_OPTIONS = [
   { value: '', label: 'Select Purpose' },
@@ -29,6 +31,18 @@ const SPECIFIED_LOCATIONS = [
 
 export const VisitorLanding = () => {
   const navigate = useNavigate();
+  const { currentUser } = useStore();
+
+  // If user is logged in, show their specific "Tools" dashboard as the home page
+  if (currentUser) {
+    if (currentUser.role === UserRole.STAFF) {
+      return <StaffDashboard />;
+    }
+    if (currentUser.role === UserRole.ADMIN) {
+      return <OperatorDashboard />;
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-screen pt-12 px-6 max-w-md mx-auto relative">
       <div className="flex flex-col items-center justify-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
@@ -78,14 +92,6 @@ export const VisitorLanding = () => {
         </p>
       </div>
 
-      <div className="flex items-center justify-between py-8 mt-6">
-        <button className="px-4 py-2 rounded-full bg-[#1E1E2E] border border-white/5 text-xs font-medium text-white/70 flex items-center gap-2">
-            🌐 English
-        </button>
-        <button className="text-blue-500 text-sm font-medium hover:underline">
-            Need Assistance?
-        </button>
-      </div>
     </div>
   );
 };

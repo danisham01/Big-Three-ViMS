@@ -21,10 +21,10 @@ const Navigation = () => {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#121217]/90 backdrop-blur-xl border-t border-white/5 pb-safe rounded-t-3xl">
       <div className="max-w-md mx-auto flex justify-around p-3">
-          {/* Always Available */}
+          {/* Home Dashboard */}
           <Link to="/visitor" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/visitor') && !path.includes('/status') ? 'text-blue-500' : 'text-gray-500'}`}>
               <Home size={22} />
-              <span className="text-[10px] font-medium">Home</span>
+              <span className="text-[10px] font-medium">{currentUser ? 'Home' : 'Home'}</span>
           </Link>
           
           <Link to="/visitor/status" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/visitor/status') ? 'text-blue-500' : 'text-gray-500'}`}>
@@ -32,21 +32,9 @@ const Navigation = () => {
               <span className="text-[10px] font-medium">Status</span>
           </Link>
 
-          {/* Role Based - STAFF or ADMIN */}
-          {currentUser && (
-              <Link to="/staff/dashboard" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/staff') && !path.includes('/login') ? 'text-blue-500' : 'text-gray-500'}`}>
-                  <Briefcase size={22} />
-                  <span className="text-[10px] font-medium">Tools</span>
-              </Link>
-          )}
-
-          {/* Role Based - ADMIN Only */}
+          {/* Admin Tools - Simplified Nav */}
           {currentUser && currentUser.role === UserRole.ADMIN && (
               <>
-                  <Link to="/operator" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/operator') ? 'text-blue-500' : 'text-gray-500'}`}>
-                      <LayoutDashboard size={22} />
-                      <span className="text-[10px] font-medium">Queue</span>
-                  </Link>
                   <Link to="/guard" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/guard') ? 'text-blue-500' : 'text-gray-500'}`}>
                       <Shield size={22} />
                       <span className="text-[10px] font-medium">Guard</span>

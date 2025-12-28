@@ -25,9 +25,9 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 const VALID_USERS = [
-  { username: 'admin', password: 'password123', role: UserRole.ADMIN, fullName: 'System Admin' },
-  { username: 'staff1', password: 'password123', role: UserRole.STAFF, fullName: 'Luqman Staff' },
-  { username: 'guard1', password: 'password123', role: UserRole.ADMIN, fullName: 'Gate Guard (Admin Priv)' },
+  { username: 'admin', password: '1', role: UserRole.ADMIN, fullName: 'System Admin' },
+  { username: 'staff1', password: '1', role: UserRole.STAFF, fullName: 'Luqman Staff' },
+  { username: 'guard1', password: '1', role: UserRole.ADMIN, fullName: 'Gate Guard (Admin Priv)' },
 ];
 
 const determineQRType = (type: VisitorType, mode: TransportMode): QRType => {

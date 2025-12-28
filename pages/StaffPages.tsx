@@ -5,7 +5,7 @@ import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, StatusBadge, Toast, LoadingOverlay, HistoryItemSkeleton, ConfirmModal } from '../components/GlassComponents';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
 import { VisitorType, TransportMode, VisitorStatus, Visitor, UserRole, Notification, QRType } from '../types';
-import { User as UserIcon, Car, Check, Lock, ChevronRight, Mail, Share2, Download, LogOut, ArrowLeft, Calendar, FileText, Phone, Briefcase, UserCheck, Shield, Clock, AlertCircle, Eye, EyeOff, CheckCircle2, Bell, MapPin, Hash, FileUp } from 'lucide-react';
+import { User as UserIcon, Car, Check, Lock, ChevronRight, Mail, Share2, Download, LogOut, ArrowLeft, Calendar, FileText, Phone, Briefcase, UserCheck, Shield, Clock, AlertCircle, Eye, EyeOff, CheckCircle2, Bell, MapPin, Hash, FileUp, Camera, Image as ImageIcon, Bike, X, CreditCard, Copy, ShieldCheck, RefreshCw } from 'lucide-react';
 
 const PURPOSE_OPTIONS = [
   { value: '', label: 'Select Purpose' },
@@ -160,6 +160,7 @@ export const StaffDashboard = () => {
     const [toast, setToast] = useState({ show: false, message: '' });
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const docInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     useEffect(() => {
         if (!currentUser) navigate('/staff/login');
@@ -186,7 +187,7 @@ export const StaffDashboard = () => {
     }, [unreadNotifications, markNotificationRead]);
 
     const [formData, setFormData] = useState({
-        name: '', email: '', phone: '', icNumber: '', purpose: '',
+        name: '', email: '', phone: '', icNumber: '', icPhoto: '', purpose: '',
         dropOffArea: '', specifiedLocation: '', staffNumber: '', location: '',
         startDate: '', endDate: '', supportingDocument: '', transportMode: TransportMode.NON_CAR, licensePlate: ''
     });
@@ -217,8 +218,12 @@ export const StaffDashboard = () => {
     const validate = () => {
       const newErrors: { [key: string]: string } = {};
       if (!formData.name.trim()) newErrors.name = 'Full name is required';
-      if (!formData.email.trim()) newErrors.email = 'Email is required';
-      if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
+      if (!formData.phone.trim()) {
+        newErrors.phone = 'Phone number is required';
+      } else if (!/^\+?[\d\s-()]{7,15}$/.test(formData.phone.trim())) {
+        newErrors.phone = 'Enter a valid phone number';
+      }
+      if (!formData.icNumber.trim()) newErrors.icNumber = 'IC Number is required';
       if (!formData.purpose) newErrors.purpose = 'Purpose is required';
 
       if (!formData.startDate) newErrors.startDate = 'Start time is required';
@@ -239,18 +244,23 @@ export const StaffDashboard = () => {
       if (['External TNB Staff', 'External Staff'].includes(p)) {
         if (!formData.staffNumber.trim()) newErrors.staffNumber = 'Staff number is required';
         if (!formData.location.trim()) newErrors.location = 'Location is required';
+        if (!formData.icPhoto) newErrors.icPhoto = 'ID Snapshot is required';
+      }
+
+      if (formData.transportMode === TransportMode.CAR && !formData.licensePlate.trim()) {
+        newErrors.licensePlate = 'License plate is required';
       }
 
       setErrors(newErrors);
       return Object.keys(newErrors).length === 0;
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'icPhoto' | 'supportingDocument') => {
       const file = e.target.files?.[0];
       if (file) {
         const reader = new FileReader();
         reader.onloadend = () => {
-          setFormData(prev => ({ ...prev, supportingDocument: reader.result as string }));
+          setFormData(prev => ({ ...prev, [field]: reader.result as string }));
         };
         reader.readAsDataURL(file);
       }
@@ -262,22 +272,27 @@ export const StaffDashboard = () => {
         
         setLoading(true);
         setTimeout(() => {
-            const visitor = addVisitor({
-                ...formData,
-                name: formData.name.trim(),
-                visitDate: formData.startDate,
-                endDate: formData.endDate,
-                contact: formData.phone.trim(),
-                email: formData.email.trim(),
-                type: VisitorType.PREREGISTERED,
-                status: VisitorStatus.PENDING,
-                registeredBy: currentUser?.username || 'STAFF'
-            });
-            setLoading(false);
-            setToast({ show: true, message: 'Invitation pending approval.' });
-            setTimeout(() => {
-                navigate(`/staff/share/${visitor.id}?emailSent=true`);
-            }, 800);
+            try {
+              const visitor = addVisitor({
+                  ...formData,
+                  name: formData.name.trim(),
+                  visitDate: formData.startDate,
+                  endDate: formData.endDate,
+                  contact: formData.phone.trim(),
+                  email: formData.email.trim(),
+                  type: VisitorType.PREREGISTERED,
+                  status: VisitorStatus.PENDING,
+                  registeredBy: currentUser?.username || 'STAFF'
+              });
+              setLoading(false);
+              setToast({ show: true, message: 'Invitation pending approval.' });
+              setTimeout(() => {
+                  navigate(`/staff/share/${visitor.id}?emailSent=true`);
+              }, 800);
+            } catch (err: any) {
+              setLoading(false);
+              setToast({ show: true, message: err.message });
+            }
         }, 1200);
     };
 
@@ -328,67 +343,266 @@ export const StaffDashboard = () => {
             </div>
 
             {view === 'register' ? (
-                <GlassCard title="Guest Details" className="!p-5 animate-in fade-in slide-in-from-right-4">
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
-                        <Input label="Full Name" required value={formData.name} error={errors.name} onChange={e => setFormData({...formData, name: e.target.value})} icon={<UserIcon size={16} />} />
-                        <Input label="Email" required type="email" value={formData.email} error={errors.email} onChange={e => setFormData({...formData, email: e.target.value})} icon={<Mail size={16} />} />
-                        <Input label="Phone" required type="tel" value={formData.phone} error={errors.phone} onChange={e => setFormData({...formData, phone: e.target.value})} icon={<Phone size={16} />} />
-                        <Select label="Purpose" required options={PURPOSE_OPTIONS} value={formData.purpose} onChange={e => setFormData({...formData, purpose: e.target.value})} />
-                        {errors.purpose && <p className="mb-2 ml-1 text-[10px] text-red-400 font-medium">{errors.purpose}</p>}
-                        
+                <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-right-4">
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+                    <GlassCard title="Identity Verification" className="!p-5 !pb-2">
+                        <Input 
+                            label="Full Name" 
+                            required 
+                            value={formData.name}
+                            error={errors.name}
+                            onChange={e => setFormData({...formData, name: e.target.value})}
+                            placeholder="John Doe"
+                            icon={<UserIcon size={18} />}
+                        />
+                        <Input 
+                            label="IC Number / ID" 
+                            required 
+                            value={formData.icNumber}
+                            error={errors.icNumber}
+                            onChange={e => setFormData({...formData, icNumber: e.target.value})}
+                            placeholder="e.g. 900101-01-1234"
+                            icon={<CreditCard size={18} />}
+                        />
+
+                        <div className="mb-4">
+                            <label className="block text-xs font-medium text-white/60 mb-2 ml-1 uppercase tracking-wider">
+                              {['External TNB Staff', 'External Staff'].includes(formData.purpose) ? 'ID Snapshot (Required)' : 'IC / ID Photo'}
+                            </label>
+                            <div className="flex flex-col gap-3">
+                                {formData.icPhoto ? (
+                                    <div className="relative group rounded-2xl overflow-hidden aspect-video border border-white/10 bg-black/40">
+                                        <img src={formData.icPhoto} alt="IC Preview" className="w-full h-full object-cover" />
+                                        <button 
+                                            type="button"
+                                            onClick={() => setFormData(prev => ({ ...prev, icPhoto: '' }))}
+                                            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="flex flex-col items-center justify-center gap-2 py-8 bg-[#151520] hover:bg-[#1E1E2E] border border-white/5 border-dashed rounded-2xl text-white/40 hover:text-white transition-all"
+                                        >
+                                            <Camera size={24} />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">Snapshot</span>
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => { if(fileInputRef.current) { fileInputRef.current.removeAttribute('capture'); fileInputRef.current.click(); } }}
+                                            className="flex flex-col items-center justify-center gap-2 py-8 bg-[#151520] hover:bg-[#1E1E2E] border border-white/5 border-dashed rounded-2xl text-white/40 hover:text-white transition-all"
+                                        >
+                                            <ImageIcon size={24} />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">Gallery</span>
+                                        </button>
+                                    </div>
+                                )}
+                                <input 
+                                    ref={fileInputRef}
+                                    type="file" 
+                                    accept="image/*" 
+                                    capture="environment"
+                                    className="hidden" 
+                                    onChange={e => handleFileChange(e, 'icPhoto')}
+                                />
+                            </div>
+                            {errors.icPhoto && <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium">{errors.icPhoto}</p>}
+                        </div>
+                    </GlassCard>
+
+                    <GlassCard title="Contact Info" className="!p-5 !pb-2">
+                        <Input 
+                            label="Phone Number" 
+                            required 
+                            type="tel"
+                            value={formData.phone}
+                            error={errors.phone}
+                            onChange={e => setFormData({...formData, phone: e.target.value})}
+                            placeholder="+6012-3456789"
+                            icon={<Phone size={18} />}
+                        />
+                        <Input 
+                            label="Email Address" 
+                            type="email"
+                            value={formData.email}
+                            error={errors.email}
+                            onChange={e => setFormData({...formData, email: e.target.value})}
+                            placeholder="john@example.com (optional)"
+                            icon={<Mail size={18} />}
+                        />
+                    </GlassCard>
+
+                    <GlassCard title="Visit Details" className="!p-5 !pb-2">
+                        <Select 
+                            label="Purpose of Visit"
+                            required
+                            options={PURPOSE_OPTIONS}
+                            value={formData.purpose}
+                            error={errors.purpose}
+                            onChange={e => setFormData({...formData, purpose: e.target.value})}
+                        />
+
                         {['E-Hailing (Driver)', 'Food Services', 'Courier Services', 'Garbage Truck Services', 'Safeguard'].includes(formData.purpose) && (
-                          <Input label="Drop-off / Pickup Area" required value={formData.dropOffArea} error={errors.dropOffArea} onChange={e => setFormData({...formData, dropOffArea: e.target.value})} icon={<MapPin size={16} />} />
-                        )}
-
-                        {formData.purpose === 'Public' && (
-                          <Select label="Specified Location" required options={SPECIFIED_LOCATIONS} value={formData.specifiedLocation} onChange={e => setFormData({...formData, specifiedLocation: e.target.value})} />
-                        )}
-                        {formData.purpose === 'Public' && errors.specifiedLocation && <p className="mb-2 ml-1 text-[10px] text-red-400 font-medium">{errors.specifiedLocation}</p>}
-
-                        {['External TNB Staff', 'External Staff'].includes(formData.purpose) && (
-                          <div className="space-y-3">
-                            <Input label="Staff Number" required value={formData.staffNumber} error={errors.staffNumber} onChange={e => setFormData({...formData, staffNumber: e.target.value})} icon={<Hash size={16} />} />
-                            <Input label="Location" required value={formData.location} error={errors.location} onChange={e => setFormData({...formData, location: e.target.value})} icon={<MapPin size={16} />} />
+                          <div className="animate-in slide-in-from-top-2">
+                            <Input 
+                              label="Designated Drop-off / Pickup Area"
+                              required
+                              value={formData.dropOffArea}
+                              error={errors.dropOffArea}
+                              onChange={e => setFormData({...formData, dropOffArea: e.target.value})}
+                              placeholder="e.g. Block A Lobby"
+                              icon={<MapPin size={18} />}
+                            />
                           </div>
                         )}
 
-                        <div className="space-y-4 pt-2 border-t border-white/5">
-                            <Input label="Start Visit Date/Time" required type="datetime-local" value={formData.startDate} error={errors.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} icon={<Calendar size={16} />} />
-                            <Input label="End Visit Date/Time" required type="datetime-local" value={formData.endDate} error={errors.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} icon={<Calendar size={16} />} />
-                            
+                        {formData.purpose === 'Public' && (
+                          <div className="animate-in slide-in-from-top-2">
+                            <Select 
+                              label="Specified Location"
+                              required
+                              options={SPECIFIED_LOCATIONS}
+                              value={formData.specifiedLocation}
+                              error={errors.specifiedLocation}
+                              onChange={e => setFormData({...formData, specifiedLocation: e.target.value})}
+                            />
+                          </div>
+                        )}
+
+                        {['External TNB Staff', 'External Staff'].includes(formData.purpose) && (
+                          <div className="animate-in slide-in-from-top-2 space-y-4">
+                            <Input 
+                              label="Staff Number"
+                              required
+                              value={formData.staffNumber}
+                              error={errors.staffNumber}
+                              onChange={e => setFormData({...formData, staffNumber: e.target.value})}
+                              placeholder="TNB-12345"
+                              icon={<Hash size={18} />}
+                            />
+                            <Input 
+                              label="Location"
+                              required
+                              value={formData.location}
+                              error={errors.location}
+                              onChange={e => setFormData({...formData, location: e.target.value})}
+                              placeholder="e.g. Server Room, Floor 5"
+                              icon={<MapPin size={18} />}
+                            />
+                          </div>
+                        )}
+
+                        <div className="space-y-4 pt-2">
+                            <Input 
+                                label="Start Visit Date/Time" 
+                                type="datetime-local"
+                                required 
+                                value={formData.startDate}
+                                error={errors.startDate}
+                                onChange={e => setFormData({...formData, startDate: e.target.value})}
+                                icon={<Calendar size={18} />}
+                            />
+                            <Input 
+                                label="End Visit Date/Time" 
+                                type="datetime-local"
+                                required 
+                                value={formData.endDate}
+                                error={errors.endDate}
+                                onChange={e => setFormData({...formData, endDate: e.target.value})}
+                                icon={<Calendar size={18} />}
+                            />
+
                             {durationDays > 0 && (
-                              <div className={`p-3 rounded-xl border flex items-center justify-between animate-in zoom-in ${isLongTerm ? 'bg-orange-500/10 border-orange-500/30' : 'bg-blue-500/10 border-blue-500/30'}`}>
+                              <div className={`p-3 rounded-xl border flex items-center justify-between animate-in fade-in zoom-in ${isLongTerm ? 'bg-orange-500/10 border-orange-500/30' : 'bg-blue-500/10 border-blue-500/30'}`}>
                                 <div className="flex items-center gap-2">
-                                  <Clock size={14} className={isLongTerm ? 'text-orange-400' : 'text-blue-400'} />
-                                  <span className="text-[10px] font-black uppercase tracking-widest text-white/50">Duration</span>
+                                  <Clock size={16} className={isLongTerm ? 'text-orange-400' : 'text-blue-400'} />
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-white/70">Visit Duration</span>
                                 </div>
-                                <span className={`text-[10px] font-bold ${isLongTerm ? 'text-orange-400' : 'text-blue-400'}`}>
+                                <span className={`text-xs font-bold ${isLongTerm ? 'text-orange-400' : 'text-blue-400'}`}>
                                   {durationDays.toFixed(1)} Days
                                 </span>
                               </div>
                             )}
 
                             {isLongTerm && (
-                                <div className="space-y-2">
-                                  <label className="block text-xs font-medium text-white/60 mb-1 ml-1 uppercase tracking-wider">Supporting Doc (>7 days)</label>
+                              <div className="animate-in slide-in-from-top-2 space-y-3">
+                                <div className="p-3 bg-blue-600/10 border border-blue-500/30 rounded-xl flex gap-3">
+                                  <AlertCircle className="text-blue-400 shrink-0" size={18} />
+                                  <p className="text-[10px] leading-relaxed text-blue-200/70 font-medium">
+                                    <span className="font-bold text-white block mb-0.5">Extended Stay Policy</span>
+                                    Required for host/approver reference when visit duration exceeds 7 days.
+                                  </p>
+                                </div>
+                                
+                                <div className="relative">
+                                  <label className="block text-xs font-medium text-white/60 mb-2 ml-1 uppercase tracking-wider">Supporting Document (Required)</label>
                                   <button 
                                     type="button"
                                     onClick={() => docInputRef.current?.click()}
-                                    className={`w-full py-3 px-4 rounded-xl border-2 border-dashed transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest ${formData.supportingDocument ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10'}`}
+                                    className={`w-full py-4 px-4 rounded-2xl border-2 border-dashed transition-all flex items-center justify-center gap-3 ${formData.supportingDocument ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}
                                   >
-                                    {formData.supportingDocument ? <><Check size={14} /> Attached</> : <><FileUp size={14} /> Upload Attachment</>}
+                                    {formData.supportingDocument ? <><Check size={18} /> Document Attached</> : <><FileUp size={18} /> Upload PDF / Image</>}
                                   </button>
-                                  <input ref={docInputRef} type="file" className="hidden" onChange={handleFileChange} />
-                                  {errors.supportingDocument && <p className="ml-1 text-[10px] text-red-400 font-medium">{errors.supportingDocument}</p>}
+                                  <input 
+                                    ref={docInputRef}
+                                    type="file" 
+                                    accept="image/*,application/pdf"
+                                    className="hidden"
+                                    onChange={e => handleFileChange(e, 'supportingDocument')}
+                                  />
+                                  {errors.supportingDocument && <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium">{errors.supportingDocument}</p>}
                                 </div>
+                              </div>
                             )}
                         </div>
+                    </GlassCard>
 
-                        <Button type="submit" loading={loading} className="mt-4 flex items-center justify-center gap-2 group">
-                             Generate Invite <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                        </Button>
-                    </form>
-                </GlassCard>
+                    <GlassCard title="Transportation" className="!p-5">
+                        <div className="bg-[#121217] p-1 rounded-xl flex mb-4">
+                            <button
+                                type="button"
+                                className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${formData.transportMode === TransportMode.CAR ? 'bg-[#252530] text-white shadow-lg' : 'text-white/40 hover:text-white/60'}`}
+                                onClick={() => setFormData({...formData, transportMode: TransportMode.CAR})}
+                            >
+                                <Car size={16} /> Car
+                            </button>
+                            <button
+                                type="button"
+                                className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${formData.transportMode === TransportMode.NON_CAR ? 'bg-[#252530] text-white shadow-lg' : 'text-white/40 hover:text-white/60'}`}
+                                onClick={() => setFormData({...formData, transportMode: TransportMode.NON_CAR})}
+                            >
+                                <div className="flex items-center gap-1">
+                                    <UserIcon size={16} />
+                                    <span className="opacity-40">/</span>
+                                    <Bike size={16} />
+                                </div>
+                                <span>Walk-in / Bike</span>
+                            </button>
+                        </div>
+
+                        {formData.transportMode === TransportMode.CAR && (
+                            <Input 
+                                label="License Plate" 
+                                required 
+                                value={formData.licensePlate}
+                                error={errors.licensePlate}
+                                onChange={e => setFormData({...formData, licensePlate: e.target.value.toUpperCase()})}
+                                placeholder="ABC-1234"
+                                icon={<FileText size={18} />}
+                                className="uppercase font-mono"
+                            />
+                        )}
+                    </GlassCard>
+
+                    <Button type="submit" loading={loading} className="mt-2 flex items-center justify-center gap-2 group shadow-blue-500/20 shadow-xl">
+                        Generate Invite <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                  </form>
+                </div>
             ) : view === 'history' ? (
                 <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-left-4">
                     {historyLoading ? (
@@ -455,23 +669,34 @@ export const StaffSharePass = () => {
     const [toast, setToast] = useState({ show: false, message: '' });
     const [isSharing, setIsSharing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [copied, setCopied] = useState(false);
     
     useEffect(() => {
         if (!currentUser) navigate('/staff/login');
         if (searchParams.get('emailSent') === 'true') {
-            setToast({ show: true, message: 'Invitation email sent!' });
+            setToast({ show: true, message: 'Invitation record created!' });
         }
     }, [currentUser, navigate, searchParams]);
 
     const visitor = getVisitorByCode(id || '');
 
-    if (!visitor) return <div className="text-white p-10 text-center">Visitor not found</div>;
+    if (!visitor) return (
+      <div className="flex flex-col items-center justify-center h-screen text-white p-4">
+          <p>Visitor record not found.</p>
+          <Button onClick={() => navigate('/staff/dashboard')} className="mt-4">Back to Dashboard</Button>
+      </div>
+    );
+
+    const handleCopyCode = () => {
+        navigator.clipboard.writeText(visitor.id);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     const handleShare = async () => {
         setIsSharing(true);
         const shareUrl = `${window.location.origin}/#/visitor/wallet/${visitor.id}`;
-        await new Promise(r => setTimeout(r, 800));
-
+        
         if (navigator.share) {
             try {
                 await navigator.share({
@@ -479,15 +704,14 @@ export const StaffSharePass = () => {
                     text: `Hello ${visitor.name}, here is your access code: ${visitor.id}`,
                     url: shareUrl
                 });
-                setToast({ show: true, message: 'Pass shared successfully!' });
             } catch (err) {
                 if ((err as Error).name !== 'AbortError') {
-                    navigator.clipboard.writeText(shareUrl);
+                    handleCopyCode();
                     setToast({ show: true, message: 'Link copied to clipboard!' });
                 }
             }
         } else {
-            navigator.clipboard.writeText(shareUrl);
+            handleCopyCode();
             setToast({ show: true, message: 'Link copied to clipboard!' });
         }
         setIsSharing(false);
@@ -495,67 +719,154 @@ export const StaffSharePass = () => {
 
     const handleDownload = async () => {
         setIsSaving(true);
-        await new Promise(r => setTimeout(r, 1200));
-        setToast({ show: true, message: 'Pass saved to gallery!' });
-        setIsSaving(false);
+        const svg = document.getElementById('qr-code-svg');
+        if (!svg) {
+            setIsSaving(false);
+            return;
+        }
+        const serializer = new XMLSerializer();
+        let source = serializer.serializeToString(svg);
+        if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
+            source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = 500;
+        canvas.height = 500;
+        const ctx = canvas.getContext('2d');
+        if(!ctx) {
+            setIsSaving(false);
+            return;
+        }
+        const img = new Image();
+        img.onload = () => {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 25, 25, 450, 450);
+            const a = document.createElement('a');
+            a.download = `invite-${visitor.name}-${visitor.id}.png`;
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+            setIsSaving(false);
+            setToast({ show: true, message: 'Pass saved to gallery!' });
+        };
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
     };
 
     return (
-        <div className="max-w-md mx-auto pt-8 px-4 pb-24">
+        <div className="max-w-md mx-auto pt-6 px-4 pb-24">
             <Toast show={toast.show} message={toast.message} onHide={() => setToast({ ...toast, show: false })} />
 
-            <button onClick={() => navigate('/staff/dashboard')} className="mb-4 flex items-center gap-2 text-white/60 hover:text-white transition-colors">
-                <ArrowLeft size={18} /> Back to Dashboard
-            </button>
-            
-            <div className="text-center mb-6 animate-in slide-in-from-top-2 fade-in duration-700">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 mb-4 shadow-[0_0_20px_rgba(16,185,129,0.1)] relative">
-                    <Check size={32} />
-                    <div className="absolute inset-0 rounded-full border-2 border-emerald-500 animate-ping opacity-20"></div>
-                </div>
-                <h1 className="text-2xl font-bold text-white">Guest Invite Ready!</h1>
-                <p className="text-white/40 text-xs mt-1">Status: {visitor.status}</p>
+            <div className="flex items-center justify-between mb-6">
+                <button onClick={() => navigate('/staff/dashboard')} className="w-10 h-10 rounded-full bg-[#1E1E2E] border border-white/5 flex items-center justify-center text-white/70 hover:text-white">
+                    <ArrowLeft size={20} />
+                </button>
+                <h2 className="text-white font-bold">Review Invitation</h2>
+                <div className="w-10"></div>
             </div>
-
-            <GlassCard className="text-center !p-0 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)] animate-in zoom-in-95 duration-500">
-                <div className="bg-[#252530] p-6 border-b border-white/5 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-50"></div>
-                    <h2 className="text-xl font-bold text-white mb-1">{visitor.name}</h2>
-                    <p className="text-white/50 text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-2">
-                         <span className="font-black text-blue-400">ID {visitor.id}</span>
+            
+            <GlassCard className="text-center relative !p-0 overflow-hidden pb-6 mb-4">
+                <div className="bg-[#252530] p-6 border-b border-white/5">
+                    <div className="flex justify-center mb-4">
+                        <StatusBadge status={visitor.status} />
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-1">{visitor.name}</h2>
+                    <p className="text-white/50 text-sm flex items-center justify-center gap-2">
+                        Guest Invite • <span className="flex items-center gap-1">{visitor.transportMode === TransportMode.CAR ? <Car size={14}/> : <div className="flex items-center gap-0.5"><UserIcon size={14}/><Bike size={14}/></div>} {visitor.transportMode === TransportMode.CAR ? 'Car' : 'Walk-in / Bike'}</span>
                     </p>
                 </div>
-                <div className="p-6 relative">
-                    <div className="bg-white p-4 rounded-2xl mb-8 mx-auto w-fit shadow-xl transform hover:scale-[1.02] transition-transform duration-300">
-                         <QRCodeDisplay value={visitor.id} type={visitor.status === VisitorStatus.APPROVED ? visitor.qrType : QRType.NONE} />
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                        <Button variant="primary" className="flex items-center justify-center gap-2" onClick={handleShare} loading={isSharing}>
-                            <Share2 size={16} /> Share Pass
-                        </Button>
-                        <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={handleDownload} loading={isSaving}>
-                            <Download size={16} /> Download
-                        </Button>
+                
+                <div className="p-6">
+                    {/* Unique Code Display */}
+                    <div className="bg-[#121217] rounded-2xl p-4 mb-6 relative group cursor-pointer" onClick={handleCopyCode}>
+                        <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1 font-bold">Unique Access Code</p>
+                        <p className="text-4xl font-mono font-bold text-white tracking-[0.2em] group-hover:text-blue-400 transition-colors">{visitor.id}</p>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 group-hover:text-white/50 transition-colors">
+                            {copied ? <Check size={20} className="text-green-500"/> : <Copy size={20}/>}
+                        </div>
                     </div>
 
-                    <div className="mt-6 flex items-center justify-center gap-2 py-3 px-4 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
-                        <CheckCircle2 size={14} className="text-emerald-400" />
-                        <span className="text-[10px] font-bold text-emerald-400/80 uppercase tracking-widest">Access Link Active</span>
+                    <div className="animate-in zoom-in duration-500">
+                        {visitor.qrType !== QRType.NONE ? (
+                            <>
+                                <div className={`p-4 bg-white rounded-2xl mx-auto w-fit mb-6 ${visitor.status === VisitorStatus.PENDING ? "opacity-60 grayscale" : ""}`}>
+                                    <QRCodeDisplay 
+                                        value={visitor.id} 
+                                        type={visitor.qrType} 
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 mb-4">
+                                    <Button 
+                                        variant="secondary" 
+                                        className="text-xs py-3 flex items-center justify-center gap-2 bg-[#252530] hover:bg-[#303040]"
+                                        onClick={handleDownload}
+                                        loading={isSaving}
+                                    >
+                                        <Download size={14}/> Save to Gallery
+                                    </Button>
+                                    <Button 
+                                        variant="primary" 
+                                        className="text-xs py-3 flex items-center justify-center gap-2"
+                                        onClick={handleShare}
+                                        loading={isSharing}
+                                    >
+                                        <Share2 size={14}/> Share Pass
+                                    </Button>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="p-8 bg-blue-500/10 rounded-3xl border border-blue-500/20 mb-6">
+                                <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400 mx-auto mb-4">
+                                    <ShieldCheck size={32} />
+                                </div>
+                                <h3 className="text-white font-bold text-lg mb-2">LPR Activated</h3>
+                                <p className="text-blue-200/60 text-sm mb-4">
+                                    Guest vehicle entry via LPR. No QR required for this invite.
+                                </p>
+                                <div className="bg-white/5 p-3 rounded-xl border border-white/10 font-mono text-blue-400 font-bold tracking-widest text-xl uppercase">
+                                    {visitor.licensePlate}
+                                </div>
+                                <p className="text-[10px] text-white/20 uppercase tracking-widest mt-4 font-bold">Gate Access Only</p>
+                            </div>
+                        )}
+
+                        {visitor.status === VisitorStatus.PENDING && (
+                            <p className="text-xs text-yellow-500/80 bg-yellow-500/10 p-3 rounded-xl border border-yellow-500/20 mb-4">
+                                <RefreshCw size={12} className="inline mr-1 animate-spin"/> Awaiting admin approval before activation.
+                            </p>
+                        )}
                     </div>
                 </div>
             </GlassCard>
-            
-            <div className="mt-8 p-6 bg-[#121217] rounded-3xl border border-white/5 animate-in slide-in-from-bottom-2 duration-700 delay-300">
-                <h3 className="text-xs font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Guest Instructions</h3>
+
+            {visitor.transportMode === TransportMode.CAR && (
+                <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-center gap-4 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 shrink-0">
+                        <Car size={20} />
+                    </div>
+                    <div>
+                        <p className="text-yellow-200 font-bold text-sm">LPR Enabled</p>
+                        <p className="text-yellow-200/60 text-xs mt-0.5">
+                            Guest gate opens for <span className="font-mono text-white/90 bg-white/10 px-1 rounded">{visitor.licensePlate}</span>
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            <div className="p-6 bg-[#121217] rounded-3xl border border-white/5 animate-in slide-in-from-bottom-2 duration-700">
+                <h3 className="text-xs font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Staff Summary</h3>
                 <div className="space-y-4">
                     <div className="flex gap-4">
                         <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">1</div>
-                        <p className="text-xs text-white/60 leading-relaxed">Share the access link with the guest via WhatsApp, SMS, or Email.</p>
+                        <p className="text-xs text-white/60 leading-relaxed">Share the access link or the QR image with your guest.</p>
                     </div>
                     <div className="flex gap-4">
                         <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">2</div>
-                        <p className="text-xs text-white/60 leading-relaxed">Guest should present the QR code to the guard at the entrance.</p>
+                        <p className="text-xs text-white/60 leading-relaxed">The guest's visit is valid from <span className="text-white font-bold">{new Date(visitor.visitDate).toLocaleDateString()}</span>.</p>
+                    </div>
+                    <div className="flex gap-4">
+                        <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">3</div>
+                        <p className="text-xs text-white/60 leading-relaxed">You will receive a notification once the admin approves this guest.</p>
                     </div>
                 </div>
             </div>

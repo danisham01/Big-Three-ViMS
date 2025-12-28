@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { GlassCard, Button, Input, Spinner, ConfirmModal } from '../components/GlassComponents';
 import { VisitorStatus, QRType, UserRole } from '../types';
-import { Scan, AlertTriangle, Unlock, LogOut, CheckCircle2, ShieldAlert, Ban } from 'lucide-react';
+import { Scan, AlertTriangle, Unlock, LogOut, CheckCircle2, ShieldAlert, Ban, UserCheck } from 'lucide-react';
 
 const AccessPoint = ({ name, type, allowedQRs, allowLPR }: { 
     name: string, 
@@ -15,7 +15,7 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
     const { getVisitorByCode, getVisitorByPlate, logAccess, checkBlacklist } = useStore();
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [message, setMessage] = useState<{type: 'success' | 'error' | 'info' | 'blacklist', text: string} | null>(null);
+    const [message, setMessage] = useState<{type: 'success' | 'error' | 'info' | 'blacklist', text: string, host?: string} | null>(null);
 
     const handleScan = () => {
         if (!input.trim()) return;
@@ -78,7 +78,11 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
             const action = isExit ? 'EXIT' : 'ENTRY';
             
             logAccess({ visitorId: visitor.id, visitorName: visitor.name, action: action, location: type, method: method });
-            setMessage({ type: 'success', text: `${action}: ${visitor.name}` });
+            setMessage({ 
+                type: 'success', 
+                text: `${action}: ${visitor.name}`,
+                host: visitor.registeredBy !== 'SELF' ? visitor.registeredBy : undefined
+            });
             setInput('');
             setIsLoading(false);
         }, 1200);
@@ -145,15 +149,22 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
                     {isLoading ? 'Verifying...' : 'Simulate Scan'}
                 </Button>
 
-                <div className="h-16 flex items-center justify-center">
+                <div className="h-20 flex items-center justify-center">
                     {message && (
-                        <div className={`w-full p-4 rounded-2xl text-[11px] font-black text-center animate-in fade-in slide-in-from-top-2 border flex items-center justify-center gap-2 ${
+                        <div className={`w-full p-4 rounded-2xl text-[11px] font-black text-center animate-in fade-in slide-in-from-top-2 border flex flex-col items-center justify-center gap-1 ${
                             message.type === 'success' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' :
                             message.type === 'blacklist' ? 'bg-red-900/40 text-red-400 border-red-600 animate-pulse' :
                             'bg-red-500/10 text-red-300 border-red-500/20'
                         }`}>
-                            {message.type === 'success' ? <CheckCircle2 size={16} /> : <Ban size={16} />}
-                            <span className="uppercase tracking-wider">{message.text}</span>
+                            <div className="flex items-center gap-2">
+                               {message.type === 'success' ? <CheckCircle2 size={16} /> : <Ban size={16} />}
+                               <span className="uppercase tracking-wider">{message.text}</span>
+                            </div>
+                            {message.type === 'success' && message.host && (
+                                <div className="flex items-center gap-1.5 mt-1 text-[9px] text-emerald-400/60 uppercase tracking-widest font-black">
+                                    <UserCheck size={12} /> Host: {message.host}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

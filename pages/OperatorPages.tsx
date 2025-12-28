@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { GlassCard, Button, StatusBadge, Skeleton, VisitorCardSkeleton, HistoryItemSkeleton, Input, Toast, ConfirmModal } from '../components/GlassComponents';
 import { VisitorStatus, Visitor, UserRole, TransportMode } from '../types';
-import { CheckCircle, XCircle, Filter, User, Clock, Briefcase, LogOut, Search, Car, User as UserIcon, ListFilter, X, Calendar, ArrowRight, AlertCircle, Send, BellRing, Bike, Phone, Mail, CreditCard, ExternalLink, CalendarDays, MapPin, Hash } from 'lucide-react';
+import { CheckCircle, XCircle, Filter, User, Clock, Briefcase, LogOut, Search, Car, User as UserIcon, ListFilter, X, Calendar, ArrowRight, AlertCircle, Send, BellRing, Bike, Phone, Mail, CreditCard, ExternalLink, CalendarDays, MapPin, Hash, UserCheck } from 'lucide-react';
 
 // New Component: Detailed Visitor Modal
 const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: { 
@@ -64,6 +64,18 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
         {/* Detail Sections */}
         <div className="p-8 pt-4 space-y-6">
           
+          {/* Section: Origin/Registration */}
+          <div className="space-y-3">
+            <h3 className="text-[10px] font-black text-purple-500 uppercase tracking-widest px-1">Source Information</h3>
+            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400"><UserCheck size={18} /></div>
+                <div>
+                   <p className="text-[10px] text-white/30 font-bold uppercase">Registered By</p>
+                   <p className="text-sm font-bold text-white/90">{visitor.registeredBy === 'SELF' ? 'Self Registered' : `Staff: ${visitor.registeredBy}`}</p>
+                </div>
+            </div>
+          </div>
+
           {/* Section: Identity */}
           <div className="space-y-3">
             <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-widest px-1">Identity Information</h3>
@@ -238,7 +250,8 @@ export const OperatorDashboard = () => {
     return v.name.toLowerCase().includes(query) || 
            v.id.includes(query) ||
            (v.licensePlate?.toLowerCase() || '').includes(query) ||
-           v.purpose.toLowerCase().includes(query);
+           v.purpose.toLowerCase().includes(query) ||
+           (v.registeredBy?.toLowerCase() || '').includes(query);
   };
 
   const pendingVisitors = useMemo(() => {
@@ -351,7 +364,7 @@ export const OperatorDashboard = () => {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
             <input 
               type="text" 
-              placeholder="Search by name, code, or plate..."
+              placeholder="Search by name, code, plate, or host..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white/5 border border-white/5 rounded-2xl py-3.5 pl-11 pr-11 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-white/20"
@@ -497,9 +510,11 @@ export const OperatorDashboard = () => {
                                         <span className="bg-white/5 px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-tighter text-white/40 rounded">
                                             #{visitor.id}
                                         </span>
-                                        <span className="flex items-center gap-1 italic text-[9px] font-medium text-white/30">
+                                        <span className="flex items-center gap-1 text-[9px] font-medium text-white/30">
                                             {visitor.transportMode === TransportMode.CAR ? <Car size={10}/> : <div className="flex items-center"><UserIcon size={10}/><Bike size={10}/></div>}
-                                            {visitor.transportMode === TransportMode.CAR ? (visitor.licensePlate || '??-????') : 'Walk-in / Bike'}
+                                            {visitor.transportMode === TransportMode.CAR ? (visitor.licensePlate || '??-????') : 'Walk-in'}
+                                            <span className="opacity-20 mx-1">|</span>
+                                            <span className="text-purple-400/60 font-bold">{visitor.registeredBy === 'SELF' ? 'Self' : visitor.registeredBy}</span>
                                         </span>
                                     </div>
                                 </div>
@@ -572,6 +587,11 @@ const VisitorRequestCard: React.FC<VisitorRequestCardProps> = ({ visitor, isProc
                                 <span className="uppercase tracking-widest">{visitor.transportMode === TransportMode.CAR ? 'Car' : 'Walk-in / Bike'}</span>
                                 {visitor.transportMode === TransportMode.CAR && visitor.licensePlate && <span className="ml-1 font-mono text-white/20">[{visitor.licensePlate}]</span>}
                             </div>
+                            {visitor.registeredBy !== 'SELF' && (
+                               <div className="flex items-center gap-1.5 text-[9px] font-black text-purple-400/70 uppercase tracking-widest mt-0.5">
+                                 <UserCheck size={11} /> Invited by {visitor.registeredBy}
+                               </div>
+                            )}
                         </div>
                     </div>
                 </div>
