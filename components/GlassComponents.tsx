@@ -1,4 +1,6 @@
-import React from 'react';
+
+import React, { useEffect, useState } from 'react';
+import { CheckCircle, Loader2, AlertTriangle } from 'lucide-react';
 
 // Container
 export interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -27,9 +29,10 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
+  loading?: boolean;
 }
 
-export const Button = ({ children, variant = 'primary', className = '', ...props }: ButtonProps) => {
+export const Button = ({ children, variant = 'primary', className = '', loading, disabled, ...props }: ButtonProps) => {
   const variants = {
     primary: 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20 border-none', // Solid Blue from screenshot
     secondary: 'bg-white/10 hover:bg-white/20 text-white border border-white/10',
@@ -40,9 +43,11 @@ export const Button = ({ children, variant = 'primary', className = '', ...props
 
   return (
     <button 
-      className={`px-6 py-3.5 rounded-2xl font-semibold text-sm transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+      className={`px-6 py-3.5 rounded-2xl font-semibold text-sm transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${variants[variant]} ${className}`}
+      disabled={disabled || loading}
       {...props}
     >
+      {loading && <Loader2 className="animate-spin" size={18} />}
       {children}
     </button>
   );
@@ -51,6 +56,7 @@ export const Button = ({ children, variant = 'primary', className = '', ...props
 // Input
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
+  error?: string;
   className?: string;
   value?: string | number | readonly string[];
   onChange?: React.ChangeEventHandler<HTMLInputElement>;
@@ -60,22 +66,29 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   maxLength?: number;
   autoFocus?: boolean;
   icon?: React.ReactNode; 
+  suffix?: React.ReactNode;
 }
 
-export const Input = ({ label, className = '', icon, ...props }: InputProps) => (
+export const Input = ({ label, error, className = '', icon, suffix, ...props }: InputProps) => (
   <div className="mb-4 w-full">
     {label && <label className="block text-xs font-medium text-white/60 mb-2 ml-1 uppercase tracking-wider">{label}</label>}
     <div className="relative group">
       {icon && (
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-600 transition-colors z-10">
           {icon}
         </div>
       )}
       <input 
-        className={`w-full bg-white text-gray-900 placeholder-gray-400 border-none rounded-2xl px-4 py-4 focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all font-medium ${icon ? 'pl-12' : ''} ${className}`}
+        className={`w-full bg-white text-gray-900 placeholder-gray-400 border-none rounded-2xl px-4 py-4 focus:outline-none focus:ring-4 ${error ? 'focus:ring-red-500/30' : 'focus:ring-blue-500/20'} transition-all font-medium ${icon ? 'pl-12' : ''} ${suffix ? 'pr-12' : ''} ${className} ${error ? 'ring-1 ring-red-500/50' : ''}`}
         {...props}
       />
+      {suffix && (
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors z-10">
+          {suffix}
+        </div>
+      )}
     </div>
+    {error && <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium animate-in fade-in slide-in-from-top-1">{error}</p>}
   </div>
 );
 
@@ -117,3 +130,122 @@ export const StatusBadge = ({ status }: { status: string }) => {
     </span>
   );
 };
+
+// Toast
+export const Toast = ({ message, show, onHide }: { message: string, show: boolean, onHide: () => void }) => {
+  useEffect(() => {
+    if (show) {
+      const timer = setTimeout(() => {
+        onHide();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [show, onHide]);
+
+  if (!show) return null;
+
+  return (
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="bg-[#1E1E2E]/90 backdrop-blur-2xl border border-white/10 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
+        <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+           <CheckCircle size={16} />
+        </div>
+        <span className="text-sm font-bold text-white whitespace-nowrap">{message}</span>
+      </div>
+    </div>
+  );
+};
+
+// Confirmation Modal
+export const ConfirmModal = ({ 
+  show, 
+  title, 
+  message, 
+  onConfirm, 
+  onCancel, 
+  confirmText = "Confirm", 
+  cancelText = "Cancel",
+  variant = "danger" 
+}: { 
+  show: boolean, 
+  title: string, 
+  message: string, 
+  onConfirm: () => void, 
+  onCancel: () => void,
+  confirmText?: string,
+  cancelText?: string,
+  variant?: 'danger' | 'primary'
+}) => {
+  if (!show) return null;
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+      <GlassCard className="max-w-xs w-full animate-in zoom-in-95 duration-200 border-white/10 shadow-2xl">
+        <div className="flex flex-col items-center text-center">
+          <div className={`w-12 h-12 rounded-full mb-4 flex items-center justify-center ${variant === 'danger' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`}>
+            <AlertTriangle size={24} />
+          </div>
+          <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
+          <p className="text-white/50 text-sm mb-6 leading-relaxed">{message}</p>
+          <div className="flex gap-3 w-full">
+            <Button variant="ghost" onClick={onCancel} className="flex-1 !py-3">
+              {cancelText}
+            </Button>
+            <Button variant={variant} onClick={onConfirm} className="flex-1 !py-3">
+              {confirmText}
+            </Button>
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+  );
+};
+
+// Loading Components
+export const Spinner = ({ className = '', size = 24 }: { className?: string, size?: number }) => (
+  <Loader2 className={`animate-spin text-blue-500 ${className}`} size={size} />
+);
+
+export const LoadingOverlay = ({ message = 'Processing...' }: { message?: string }) => (
+  <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
+    <div className="bg-[#1E1E2E] border border-white/10 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-4">
+      <Spinner size={40} />
+      <p className="text-white font-bold tracking-wide">{message}</p>
+    </div>
+  </div>
+);
+
+export const Skeleton = ({ className = '' }: { className?: string }) => (
+  <div className={`bg-[#1E1E2E] rounded-xl overflow-hidden relative ${className}`}>
+    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"></div>
+  </div>
+);
+
+// Specific Skeletons
+export const VisitorCardSkeleton = () => (
+  <div className="bg-[#1E1E2E]/50 border border-white/5 rounded-3xl p-5 flex flex-col gap-4">
+    <div className="flex items-center gap-4">
+      <Skeleton className="w-12 h-12 rounded-2xl shrink-0" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+    </div>
+    <div className="flex gap-2">
+      <Skeleton className="h-10 flex-1 rounded-xl" />
+      <Skeleton className="h-10 flex-1 rounded-xl" />
+    </div>
+  </div>
+);
+
+export const HistoryItemSkeleton = () => (
+  <div className="bg-[#151520] border border-white/5 p-4 rounded-2xl flex items-center justify-between">
+    <div className="flex items-center gap-4">
+      <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
+      <div className="space-y-2">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-2 w-16" />
+      </div>
+    </div>
+    <Skeleton className="h-5 w-16 rounded-full" />
+  </div>
+);

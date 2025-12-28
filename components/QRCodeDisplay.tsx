@@ -1,4 +1,6 @@
+
 import React from 'react';
+import QRCode from 'react-qr-code';
 import { QRType } from '../types';
 
 interface QRCodeDisplayProps {
@@ -8,27 +10,13 @@ interface QRCodeDisplayProps {
 }
 
 export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ value, type, label }) => {
-  // Simulating a QR code pattern with SVG for robustness (no external lib dependency issues)
-  // In a real app, use `react-qr-code`
-  const generatePattern = (str: string) => {
-    const seed = str.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const rects = [];
-    for(let i=0; i<64; i++) {
-        if ((seed * (i+1)) % 3 === 0) {
-            const x = (i % 8) * 12.5;
-            const y = Math.floor(i / 8) * 12.5;
-            rects.push(<rect key={i} x={x} y={y} width="10" height="10" fill="currentColor" opacity="0.9" />);
-        }
-    }
-    return rects;
-  };
-
   const getTypeColor = (t: QRType) => {
     switch (t) {
-        case QRType.QR1: return 'text-blue-400';
-        case QRType.QR2: return 'text-orange-400';
-        case QRType.QR3: return 'text-green-400';
-        default: return 'text-gray-400';
+        case QRType.QR1: return '#3b82f6'; // Blue-500
+        case QRType.QR2: return '#f97316'; // Orange-500
+        case QRType.QR3: return '#22c55e'; // Green-500
+        case QRType.QR4: return '#8b5cf6'; // Purple-500
+        default: return '#1f2937'; // Gray-800
     }
   };
 
@@ -37,6 +25,7 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ value, type, label
         case QRType.QR1: return 'Front Gate Only';
         case QRType.QR2: return 'Elevator Only';
         case QRType.QR3: return 'All Access';
+        case QRType.QR4: return 'Gate + Elevator';
         default: return 'Invalid';
     }
   };
@@ -44,45 +33,36 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ value, type, label
   if (type === QRType.NONE) {
     return (
         <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-white/20 rounded-xl bg-white/5">
-            <p className="text-white/60 text-center text-sm">No QR Code Required</p>
-            <p className="text-white font-bold mt-2">LPR Entry Enabled</p>
+            <p className="text-white/60 text-center text-sm">Access Denied</p>
         </div>
-    )
+    );
   }
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-2xl flex flex-col items-center">
-      <svg 
-        id="qr-code-svg" 
-        viewBox="0 0 100 100" 
-        className={`w-48 h-48 ${getTypeColor(type)}`} 
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Finder Patterns */}
-        <rect x="0" y="0" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="5" />
-        <rect x="10" y="10" width="10" height="10" fill="currentColor" />
-        
-        <rect x="70" y="0" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="5" />
-        <rect x="80" y="10" width="10" height="10" fill="currentColor" />
-        
-        <rect x="0" y="70" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="5" />
-        <rect x="10" y="80" width="10" height="10" fill="currentColor" />
-        
-        {/* Random Data Pattern */}
-        <g transform="translate(10,10) scale(0.8)">
-            {generatePattern(value)}
-        </g>
-      </svg>
-      <div className="mt-3 text-center">
-        <span className="block text-gray-900 font-mono text-xs tracking-wider uppercase mb-1">{value}</span>
-        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold text-white ${
-            type === QRType.QR1 ? 'bg-blue-500' :
-            type === QRType.QR2 ? 'bg-orange-500' : 'bg-green-500'
-        }`}>
-            {type} • {getTypeLabel(type)}
+    <div className="bg-white p-5 rounded-2xl shadow-2xl flex flex-col items-center animate-in zoom-in duration-300">
+      <div className="w-48 h-48 flex items-center justify-center">
+        <QRCode 
+          id="qr-code-svg"
+          value={value} 
+          size={256}
+          style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+          viewBox={`0 0 256 256`}
+          fgColor={getTypeColor(type)}
+          level="H"
+        />
+      </div>
+      <div className="mt-4 text-center">
+        <span className="block text-gray-900 font-mono text-sm tracking-[0.2em] font-bold uppercase mb-2">
+          {value}
+        </span>
+        <span 
+          className="inline-block px-4 py-1.5 rounded-full text-[10px] font-black text-white uppercase tracking-wider"
+          style={{ backgroundColor: getTypeColor(type) }}
+        >
+          {type} • {getTypeLabel(type)}
         </span>
       </div>
-      {label && <p className="text-gray-500 text-xs mt-2">{label}</p>}
+      {label && <p className="text-gray-400 text-[10px] mt-2 font-medium">{label}</p>}
     </div>
   );
 };

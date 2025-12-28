@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+
+import React, { useState, useRef } from 'react';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import { useStore } from '../store';
-import { GlassCard, Button, Input, StatusBadge } from '../components/GlassComponents';
+import { GlassCard, Button, Input, StatusBadge, LoadingOverlay, Toast } from '../components/GlassComponents';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
 import { VisitorType, TransportMode, VisitorStatus, QRType } from '../types';
-import { User, Car, Check, AlertCircle, RefreshCw, Share2, Download, Copy, Building2, ChevronRight, ArrowLeft, HelpCircle, Phone, FileText, Briefcase, MapPin } from 'lucide-react';
+import { User, Car, Check, AlertCircle, RefreshCw, Share2, Download, Copy, Building2, ChevronRight, ArrowLeft, HelpCircle, Phone, FileText, Briefcase, Calendar, Clock, X, Search, ShieldCheck, Mail, Camera, Image as ImageIcon, CreditCard, Bike } from 'lucide-react';
 
 export const VisitorLanding = () => {
   const navigate = useNavigate();
@@ -78,89 +79,240 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
   const navigate = useNavigate();
   const { addVisitor } = useStore();
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState({
     name: '',
-    contact: '',
+    phone: '',
+    email: '',
+    icNumber: '',
+    icPhoto: '',
     purpose: '',
     visitDate: new Date().toISOString().split('T')[0],
     transportMode: TransportMode.NON_CAR,
     licensePlate: ''
   });
 
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const validate = () => {
+    const newErrors: { [key: string]: string } = {};
+
+    const nameTrimmed = formData.name.trim();
+    if (!nameTrimmed) {
+      newErrors.name = 'Full name is required';
+    } else if (nameTrimmed.length < 3) {
+      newErrors.name = 'Name is too short';
+    }
+
+    const phoneTrimmed = formData.phone.trim();
+    if (!phoneTrimmed) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!/^\+?[\d\s-()]{7,15}$/.test(phoneTrimmed)) {
+      newErrors.phone = 'Enter a valid phone number';
+    }
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Enter a valid email address';
+    }
+
+    if (!formData.icNumber.trim()) {
+      newErrors.icNumber = 'IC Number is required';
+    }
+
+    if (!formData.purpose.trim()) {
+      newErrors.purpose = 'Purpose of visit is required';
+    }
+
+    if (formData.transportMode === TransportMode.CAR) {
+      const plate = formData.licensePlate.trim();
+      if (!plate) {
+        newErrors.licensePlate = 'License plate is required for vehicles';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, icPhoto: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerCamera = () => {
+    if (fileInputRef.current) {
+        fileInputRef.current.setAttribute('capture', 'environment');
+        fileInputRef.current.click();
+    }
+  };
+
+  const triggerGallery = () => {
+    if (fileInputRef.current) {
+        fileInputRef.current.removeAttribute('capture');
+        fileInputRef.current.click();
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (!validate()) return;
     
+    setLoading(true);
     setTimeout(() => {
       const visitor = addVisitor({
         ...formData,
+        contact: formData.phone, // Map phone to contact
         type,
       });
       setLoading(false);
       navigate(`/visitor/wallet/${visitor.id}`);
-    }, 1000);
+    }, 1500);
   };
 
   return (
     <div className="max-w-md mx-auto pt-6 px-4 pb-20">
-      {/* Navigation Header */}
+      {loading && <LoadingOverlay message="Creating your digital pass..." />}
+      
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => navigate('/visitor')} className="w-10 h-10 rounded-full bg-[#1E1E2E] border border-white/5 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors">
             <ArrowLeft size={20} />
         </button>
         <h2 className="text-xs font-bold tracking-widest text-white/50 uppercase">Visitor Access</h2>
-        <button className="w-10 h-10 rounded-full bg-[#1E1E2E] border border-white/5 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors">
+        <button className="w-10 h-10 rounded-full bg-[#1E1E2E] border border-white/5 flex items-center justify-center text-white/70 hover:text-white">
             <HelpCircle size={20} />
         </button>
       </div>
 
-      {/* Progress & Title */}
       <div className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-1 flex-1 bg-blue-600 rounded-full"></div>
-            <div className="h-1 flex-1 bg-white/10 rounded-full"></div>
-            <div className="h-1 flex-1 bg-white/10 rounded-full"></div>
-            <span className="text-xs text-white/40 ml-2">Step 1 of 3</span>
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Who are you?</h1>
-          <p className="text-white/50 text-sm">Please enter your details to generate your pass.</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Registration</h1>
+          <p className="text-white/50 text-sm">Complete your details for building access.</p>
       </div>
       
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        
-        {/* Section 1: Personal Info */}
-        <GlassCard title="Personal Info" className="!p-5 !pb-2">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+        {/* Identity Verification */}
+        <GlassCard title="Identity Verification" className="!p-5 !pb-2">
             <Input 
                 label="Full Name" 
                 required 
                 value={formData.name}
+                error={errors.name}
                 onChange={e => setFormData({...formData, name: e.target.value})}
                 placeholder="John Doe"
                 icon={<User size={18} />}
             />
             <Input 
-                label="Phone or Email" 
+                label="IC Number / ID" 
                 required 
-                value={formData.contact}
-                onChange={e => setFormData({...formData, contact: e.target.value})}
-                placeholder="+1 (555) 000-0000"
+                value={formData.icNumber}
+                error={errors.icNumber}
+                onChange={e => setFormData({...formData, icNumber: e.target.value})}
+                placeholder="e.g. 900101-01-1234"
+                icon={<CreditCard size={18} />}
+            />
+
+            <div className="mb-4">
+                <label className="block text-xs font-medium text-white/60 mb-2 ml-1 uppercase tracking-wider">IC / ID Photo</label>
+                <div className="flex flex-col gap-3">
+                    {formData.icPhoto ? (
+                        <div className="relative group rounded-2xl overflow-hidden aspect-video border border-white/10 bg-black/40">
+                            <img src={formData.icPhoto} alt="IC Preview" className="w-full h-full object-cover" />
+                            <button 
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, icPhoto: '' }))}
+                                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <X size={16} />
+                            </button>
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button type="button" onClick={triggerCamera} className="bg-white/10 p-3 rounded-full hover:bg-white/20 transition-colors backdrop-blur-md">
+                                    <RefreshCw className="text-white" size={24} />
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                            <button 
+                                type="button" 
+                                onClick={triggerCamera}
+                                className="flex flex-col items-center justify-center gap-2 py-8 bg-[#151520] hover:bg-[#1E1E2E] border border-white/5 border-dashed rounded-2xl text-white/40 hover:text-white transition-all"
+                            >
+                                <Camera size={24} />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">Take Photo</span>
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={triggerGallery}
+                                className="flex flex-col items-center justify-center gap-2 py-8 bg-[#151520] hover:bg-[#1E1E2E] border border-white/5 border-dashed rounded-2xl text-white/40 hover:text-white transition-all"
+                            >
+                                <ImageIcon size={24} />
+                                <span className="text-[10px] font-bold uppercase tracking-widest">Gallery</span>
+                            </button>
+                        </div>
+                    )}
+                    <input 
+                        ref={fileInputRef}
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleFileChange}
+                    />
+                </div>
+            </div>
+        </GlassCard>
+
+        {/* Contact Information */}
+        <GlassCard title="Contact Info" className="!p-5 !pb-2">
+            <Input 
+                label="Phone Number" 
+                required 
+                type="tel"
+                value={formData.phone}
+                error={errors.phone}
+                onChange={e => setFormData({...formData, phone: e.target.value})}
+                placeholder="+6012-3456789"
                 icon={<Phone size={18} />}
+            />
+            <Input 
+                label="Email Address" 
+                type="email"
+                value={formData.email}
+                error={errors.email}
+                onChange={e => setFormData({...formData, email: e.target.value})}
+                placeholder="john@example.com (optional)"
+                icon={<Mail size={18} />}
             />
         </GlassCard>
 
-        {/* Section 2: Visit Details */}
+        {/* Visit Details */}
         <GlassCard title="Visit Details" className="!p-5 !pb-2">
             <Input 
                 label="Purpose" 
                 required 
                 value={formData.purpose}
+                error={errors.purpose}
                 onChange={e => setFormData({...formData, purpose: e.target.value})}
                 placeholder="e.g. Business Meeting"
                 icon={<Briefcase size={18} />}
             />
+            <Input 
+                label="Visit Date" 
+                type="date"
+                required 
+                value={formData.visitDate}
+                error={errors.visitDate}
+                onChange={e => setFormData({...formData, visitDate: e.target.value})}
+                icon={<Calendar size={18} />}
+            />
         </GlassCard>
 
-        {/* Section 3: Transportation */}
+        {/* Transportation */}
         <GlassCard title="Transportation" className="!p-5">
             <div className="bg-[#121217] p-1 rounded-xl flex mb-4">
                 <button
@@ -175,35 +327,37 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                     className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${formData.transportMode === TransportMode.NON_CAR ? 'bg-[#252530] text-white shadow-lg' : 'text-white/40 hover:text-white/60'}`}
                     onClick={() => setFormData({...formData, transportMode: TransportMode.NON_CAR})}
                 >
-                    <User size={16} /> Walk-in
+                    <div className="flex items-center gap-1">
+                        <User size={16} />
+                        <span className="opacity-40">/</span>
+                        <Bike size={16} />
+                    </div>
+                    <span>Walk-in / Bike</span>
                 </button>
             </div>
 
             {formData.transportMode === TransportMode.CAR && (
-                <div className="animate-in fade-in slide-in-from-top-2">
-                    <Input 
-                        label="License Plate" 
-                        required 
-                        value={formData.licensePlate}
-                        onChange={e => setFormData({...formData, licensePlate: e.target.value.toUpperCase()})}
-                        placeholder="ABC-1234"
-                        icon={<FileText size={18} />}
-                        className="uppercase font-mono"
-                    />
-                </div>
+                <Input 
+                    label="License Plate" 
+                    required 
+                    value={formData.licensePlate}
+                    error={errors.licensePlate}
+                    onChange={e => setFormData({...formData, licensePlate: e.target.value.toUpperCase()})}
+                    placeholder="ABC-1234"
+                    icon={<FileText size={18} />}
+                    className="uppercase font-mono"
+                />
             )}
         </GlassCard>
 
-        {/* Action Button */}
         <div className="mt-2 flex items-center justify-between gap-4">
             <button type="button" onClick={() => navigate('/visitor')} className="text-white/50 text-sm font-bold px-4 py-2 hover:text-white transition-colors">
-                Back
+                Cancel
             </button>
-            <Button type="submit" disabled={loading} className="flex-1 flex items-center justify-center gap-2 shadow-blue-500/20 shadow-xl">
-                {loading ? 'Processing...' : 'Next Step'} <ChevronRight size={18} />
+            <Button type="submit" loading={loading} className="flex-1 shadow-blue-500/20 shadow-xl">
+                Register <ChevronRight size={18} />
             </Button>
         </div>
-
       </form>
     </div>
   );
@@ -219,20 +373,28 @@ export const VisitorStatusCheck = () => {
     const handleCheck = (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        const trimmedCode = code.trim();
+        if (trimmedCode.length < 5) {
+            setError('Please enter all 5 digits');
+            return;
+        }
+
         setLoading(true);
         setTimeout(() => {
-            const visitor = getVisitorByCode(code);
+            const visitor = getVisitorByCode(trimmedCode);
             setLoading(false);
             if (visitor) {
                 navigate(`/visitor/wallet/${visitor.id}`);
             } else {
-                setError('Invalid code.');
+                setError('Invalid code. Record not found.');
             }
         }, 800);
     };
 
     return (
         <div className="max-w-md mx-auto pt-20 px-6">
+            {loading && <LoadingOverlay message="Searching database..." />}
+            
             <button onClick={() => navigate('/visitor')} className="mb-6 w-10 h-10 rounded-full bg-[#1E1E2E] border border-white/5 flex items-center justify-center text-white/70 hover:text-white">
                 <ArrowLeft size={20} />
             </button>
@@ -257,8 +419,8 @@ export const VisitorStatusCheck = () => {
                         {error}
                     </div>
                 )}
-                <Button type="submit" disabled={loading || code.length < 5} className="w-full mt-4 h-14 text-lg">
-                    {loading ? 'Checking...' : 'Find Appointment'}
+                <Button type="submit" loading={loading} disabled={code.length < 5} className="w-full mt-4 h-14 text-lg">
+                    Find Appointment
                 </Button>
             </form>
         </div>
@@ -266,12 +428,22 @@ export const VisitorStatusCheck = () => {
 };
 
 export const VisitorWallet = () => {
-    const { getVisitorByCode } = useStore();
+    const { id } = useParams();
     const navigate = useNavigate();
+    const { getVisitorByCode, updateVisitor } = useStore();
     const [copied, setCopied] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isRescheduling, setIsRescheduling] = useState(false);
+    const [saveLoading, setSaveLoading] = useState(false);
+    const [toast, setToast] = useState({ show: false, message: '' });
     
-    const visitorId = window.location.hash.split('/').pop(); 
-    const visitor = getVisitorByCode(visitorId || '');
+    const visitor = getVisitorByCode(id || '');
+
+    const [rescheduleData, setRescheduleData] = useState({
+        date: visitor?.visitDate ? visitor.visitDate.split('T')[0] : '',
+        time: '09:00'
+    });
 
     if (!visitor) {
         return (
@@ -289,8 +461,12 @@ export const VisitorWallet = () => {
     };
 
     const handleDownloadQR = () => {
+        setIsSaving(true);
         const svg = document.getElementById('qr-code-svg');
-        if (!svg) return;
+        if (!svg) {
+            setIsSaving(false);
+            return;
+        }
         const serializer = new XMLSerializer();
         let source = serializer.serializeToString(svg);
         if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
@@ -300,7 +476,10 @@ export const VisitorWallet = () => {
         canvas.width = 500;
         canvas.height = 500;
         const ctx = canvas.getContext('2d');
-        if(!ctx) return;
+        if(!ctx) {
+            setIsSaving(false);
+            return;
+        }
         const img = new Image();
         img.onload = () => {
             ctx.fillStyle = '#ffffff';
@@ -310,11 +489,14 @@ export const VisitorWallet = () => {
             a.download = `pass-${visitor.id}.png`;
             a.href = canvas.toDataURL('image/png');
             a.click();
+            setIsSaving(false);
+            setToast({ show: true, message: 'Pass saved to gallery!' });
         };
         img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
     };
 
     const handleShare = async () => {
+        setIsSharing(true);
         if (navigator.share) {
             try {
                 await navigator.share({
@@ -327,12 +509,26 @@ export const VisitorWallet = () => {
             }
         } else {
             handleCopyCode();
-            alert('Code copied to clipboard!');
+            setToast({ show: true, message: 'Code copied to clipboard!' });
         }
+        setIsSharing(false);
+    };
+
+    const handleSaveReschedule = async () => {
+        setSaveLoading(true);
+        // Simulate API delay
+        await new Promise(r => setTimeout(r, 1200));
+        updateVisitor(visitor.id, { 
+            visitDate: new Date(`${rescheduleData.date}T${rescheduleData.time}`).toISOString() 
+        });
+        setSaveLoading(false);
+        setIsRescheduling(false);
+        setToast({ show: true, message: 'Visit rescheduled successfully!' });
     };
 
     return (
         <div className="max-w-md mx-auto pt-6 px-4 pb-24">
+             <Toast show={toast.show} message={toast.message} onHide={() => setToast({ ...toast, show: false })} />
              <div className="flex items-center justify-between mb-6">
                 <button onClick={() => navigate('/visitor')} className="w-10 h-10 rounded-full bg-[#1E1E2E] border border-white/5 flex items-center justify-center text-white/70 hover:text-white">
                     <ArrowLeft size={20} />
@@ -341,19 +537,19 @@ export const VisitorWallet = () => {
                 <div className="w-10"></div>
             </div>
             
-            <GlassCard className="text-center relative !p-0 overflow-hidden pb-6">
+            <GlassCard className="text-center relative !p-0 overflow-hidden pb-6 mb-4">
                 <div className="bg-[#252530] p-6 border-b border-white/5">
                     <div className="flex justify-center mb-4">
                         <StatusBadge status={visitor.status} />
                     </div>
                     <h2 className="text-2xl font-bold text-white mb-1">{visitor.name}</h2>
                     <p className="text-white/50 text-sm flex items-center justify-center gap-2">
-                        {visitor.type === VisitorType.ADHOC ? 'Ad-hoc' : 'Guest'} • <span className="flex items-center gap-1">{visitor.transportMode === TransportMode.CAR ? <Car size={14}/> : <User size={14}/>} {visitor.transportMode}</span>
+                        {visitor.type === VisitorType.ADHOC ? 'Ad-hoc' : 'Guest'} • <span className="flex items-center gap-1">{visitor.transportMode === TransportMode.CAR ? <Car size={14}/> : <div className="flex items-center gap-0.5"><User size={14}/><Bike size={14}/></div>} {visitor.transportMode === TransportMode.CAR ? 'Car' : 'Walk-in / Bike'}</span>
                     </p>
                 </div>
                 
                 <div className="p-6">
-                    {/* 5-Digit Code Display */}
+                    {/* Unique Code Display */}
                     <div className="bg-[#121217] rounded-2xl p-4 mb-6 relative group cursor-pointer" onClick={handleCopyCode}>
                         <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1 font-bold">Unique Access Code</p>
                         <p className="text-4xl font-mono font-bold text-white tracking-[0.2em] group-hover:text-blue-400 transition-colors">{visitor.id}</p>
@@ -364,29 +560,49 @@ export const VisitorWallet = () => {
 
                     {visitor.status !== VisitorStatus.REJECTED ? (
                         <div className="animate-in zoom-in duration-500">
-                            <div className={`p-4 bg-white rounded-2xl mx-auto w-fit mb-6 ${visitor.status === VisitorStatus.PENDING ? "opacity-60 grayscale" : ""}`}>
-                                <QRCodeDisplay 
-                                    value={visitor.id} 
-                                    type={visitor.qrType} 
-                                />
-                            </div>
+                            {visitor.qrType !== QRType.NONE ? (
+                                <>
+                                    <div className={`p-4 bg-white rounded-2xl mx-auto w-fit mb-6 ${visitor.status === VisitorStatus.PENDING ? "opacity-60 grayscale" : ""}`}>
+                                        <QRCodeDisplay 
+                                            value={visitor.id} 
+                                            type={visitor.qrType} 
+                                        />
+                                    </div>
 
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                <Button 
-                                    variant="secondary" 
-                                    className="text-xs py-3 flex items-center justify-center gap-2 bg-[#252530] hover:bg-[#303040]"
-                                    onClick={handleDownloadQR}
-                                >
-                                    <Download size={14}/> Save to Gallery
-                                </Button>
-                                <Button 
-                                    variant="secondary" 
-                                    className="text-xs py-3 flex items-center justify-center gap-2 bg-[#252530] hover:bg-[#303040]"
-                                    onClick={handleShare}
-                                >
-                                    <Share2 size={14}/> Share Pass
-                                </Button>
-                            </div>
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <Button 
+                                            variant="secondary" 
+                                            className="text-xs py-3 flex items-center justify-center gap-2 bg-[#252530] hover:bg-[#303040]"
+                                            onClick={handleDownloadQR}
+                                            loading={isSaving}
+                                        >
+                                            <Download size={14}/> Save to Gallery
+                                        </Button>
+                                        <Button 
+                                            variant="secondary" 
+                                            className="text-xs py-3 flex items-center justify-center gap-2 bg-[#252530] hover:bg-[#303040]"
+                                            onClick={handleShare}
+                                            loading={isSharing}
+                                        >
+                                            <Share2 size={14}/> Share Pass
+                                        </Button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="p-8 bg-blue-500/10 rounded-3xl border border-blue-500/20 mb-6 animate-pulse">
+                                    <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400 mx-auto mb-4">
+                                        <ShieldCheck size={32} />
+                                    </div>
+                                    <h3 className="text-white font-bold text-lg mb-2">LPR Activated</h3>
+                                    <p className="text-blue-200/60 text-sm mb-4">
+                                        Vehicle entry via License Plate Recognition. No QR code required for this pass.
+                                    </p>
+                                    <div className="bg-white/5 p-3 rounded-xl border border-white/10 font-mono text-blue-400 font-bold tracking-widest text-xl uppercase">
+                                        {visitor.licensePlate}
+                                    </div>
+                                    <p className="text-[10px] text-white/20 uppercase tracking-widest mt-4 font-bold">Gate Access Only</p>
+                                </div>
+                            )}
 
                             {visitor.status === VisitorStatus.PENDING && (
                                 <p className="text-xs text-yellow-500/80 bg-yellow-500/10 p-3 rounded-xl border border-yellow-500/20">
@@ -405,6 +621,72 @@ export const VisitorWallet = () => {
                     )}
                 </div>
             </GlassCard>
+
+            {/* Rescheduling Options for Pre-registered Users */}
+            {visitor.type === VisitorType.PREREGISTERED && visitor.status !== VisitorStatus.REJECTED && (
+                <GlassCard className="!p-5 border-blue-500/20">
+                    {!isRescheduling ? (
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                                    <Calendar size={20} />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-white/30 uppercase font-bold tracking-widest">Visit Date</p>
+                                    <p className="text-sm font-bold text-white">{new Date(visitor.visitDate).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+                            <Button 
+                                variant="outline" 
+                                className="!py-2 !px-4 text-xs"
+                                onClick={() => setIsRescheduling(true)}
+                            >
+                                Reschedule
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="animate-in fade-in slide-in-from-top-2">
+                            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                                <Clock size={16} className="text-blue-400"/> Modify Visit Schedule
+                            </h3>
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                <Input 
+                                    type="date" 
+                                    label="New Date" 
+                                    value={rescheduleData.date}
+                                    onChange={(e) => setRescheduleData({...rescheduleData, date: e.target.value})}
+                                    className="!mb-0 !py-3 !px-4 !text-xs"
+                                />
+                                <Input 
+                                    type="time" 
+                                    label="New Time" 
+                                    value={rescheduleData.time}
+                                    onChange={(e) => setRescheduleData({...rescheduleData, time: e.target.value})}
+                                    className="!mb-0 !py-3 !px-4 !text-xs"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <Button 
+                                    variant="ghost" 
+                                    className="flex-1 !py-3 text-xs" 
+                                    onClick={() => setIsRescheduling(false)}
+                                    disabled={saveLoading}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    variant="primary" 
+                                    className="flex-[2] !py-3 text-xs"
+                                    onClick={handleSaveReschedule}
+                                    loading={saveLoading}
+                                >
+                                    Save Changes
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </GlassCard>
+            )}
             
             {visitor.transportMode === TransportMode.CAR && (
                 <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-center gap-4">

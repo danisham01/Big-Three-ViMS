@@ -19,7 +19,19 @@ export enum QRType {
   QR1 = 'QR1', // Ad-hoc Non-car (Gate only)
   QR2 = 'QR2', // Pre-reg Car (Elevator only)
   QR3 = 'QR3', // Pre-reg Non-car (Gate + Elevator)
-  NONE = 'NONE', // Ad-hoc Car (No QR, LPR only)
+  QR4 = 'QR4', // Unused (Formerly Ad-hoc Car)
+  NONE = 'NONE', // Ad-hoc Car (LPR Gate Only, No QR)
+}
+
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  STAFF = 'STAFF',
+}
+
+export interface User {
+  username: string;
+  role: UserRole;
+  fullName: string;
 }
 
 export interface Visitor {
@@ -28,6 +40,7 @@ export interface Visitor {
   contact: string; // Phone number
   email?: string; // Specific email field
   icNumber?: string; // Identification Number
+  icPhoto?: string; // Base64 encoded ID photo
   purpose: string;
   visitDate: string; // ISO Date string (Start Date)
   endDate?: string; // ISO Date string (End Date)
@@ -39,7 +52,17 @@ export interface Visitor {
   qrType: QRType;
   timeIn?: string;
   timeOut?: string;
-  registeredBy?: 'SELF' | 'STAFF'; // Track who created it
+  registeredBy?: string; // Stores 'SELF' or the staff username
+}
+
+export interface Notification {
+  id: string;
+  recipient: string; // username of staff
+  message: string;
+  visitorId: string;
+  status: VisitorStatus;
+  read: boolean;
+  timestamp: string;
 }
 
 export interface AccessLog {
