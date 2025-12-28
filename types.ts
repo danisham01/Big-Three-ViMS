@@ -34,6 +34,18 @@ export interface User {
   fullName: string;
 }
 
+export interface BlacklistRecord {
+  id: string;
+  name?: string;
+  icNumber?: string;
+  licensePlate?: string;
+  phone?: string;
+  reason: string;
+  timestamp: string;
+  createdBy: string;
+  status: 'ACTIVE' | 'UNBANNED';
+}
+
 export interface Visitor {
   id: string;
   name: string;
@@ -42,8 +54,16 @@ export interface Visitor {
   icNumber?: string; // Identification Number
   icPhoto?: string; // Base64 encoded ID photo
   purpose: string;
+  // New specific fields based on purpose
+  dropOffArea?: string;
+  specifiedLocation?: string;
+  staffNumber?: string;
+  location?: string; 
+  
   visitDate: string; // ISO Date string (Start Date)
   endDate?: string; // ISO Date string (End Date)
+  supportingDocument?: string; // Base64 encoded supporting document
+  
   type: VisitorType;
   transportMode: TransportMode;
   licensePlate?: string;
@@ -70,7 +90,7 @@ export interface AccessLog {
   visitorId: string;
   visitorName: string;
   timestamp: string;
-  action: 'ENTRY' | 'EXIT' | 'DENIED' | 'MANUAL_OVERRIDE';
+  action: 'ENTRY' | 'EXIT' | 'DENIED' | 'MANUAL_OVERRIDE' | 'BLACKLIST_HIT';
   location: 'FRONT_GATE' | 'ELEVATOR';
   method: 'QR' | 'LPR' | 'MANUAL';
   details?: string;

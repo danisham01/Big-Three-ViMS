@@ -1,13 +1,31 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store';
-import { GlassCard, Button, Input, StatusBadge, Toast, LoadingOverlay, HistoryItemSkeleton, ConfirmModal } from '../components/GlassComponents';
+import { GlassCard, Button, Input, Select, StatusBadge, Toast, LoadingOverlay, HistoryItemSkeleton, ConfirmModal } from '../components/GlassComponents';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
-// Add QRType to the types import list
 import { VisitorType, TransportMode, VisitorStatus, Visitor, UserRole, Notification, QRType } from '../types';
-// Alias User as UserIcon for consistency in the file where UserIcon is used
-import { User as UserIcon, Car, Check, Lock, ChevronRight, Mail, Share2, Download, LogOut, ArrowLeft, Calendar, FileText, Phone, Briefcase, UserCheck, Shield, Clock, AlertCircle, Eye, EyeOff, CheckCircle2, Bell } from 'lucide-react';
+import { User as UserIcon, Car, Check, Lock, ChevronRight, Mail, Share2, Download, LogOut, ArrowLeft, Calendar, FileText, Phone, Briefcase, UserCheck, Shield, Clock, AlertCircle, Eye, EyeOff, CheckCircle2, Bell, MapPin, Hash, FileUp } from 'lucide-react';
+
+const PURPOSE_OPTIONS = [
+  { value: '', label: 'Select Purpose' },
+  { value: 'E-Hailing (Driver)', label: 'E-Hailing (Driver)' },
+  { value: 'Food Services', label: 'Food Services' },
+  { value: 'Courier Services', label: 'Courier Services' },
+  { value: 'Garbage Truck Services', label: 'Garbage Truck Services' },
+  { value: 'Safeguard', label: 'Safeguard' },
+  { value: 'Public', label: 'Public' },
+  { value: 'External TNB Staff', label: 'External TNB Staff' },
+  { value: 'External Staff', label: 'External Staff' },
+];
+
+const SPECIFIED_LOCATIONS = [
+  { value: '', label: 'Select Specified Location' },
+  { value: 'Balai Islam', label: 'Balai Islam' },
+  { value: 'Taska', label: 'Taska' },
+  { value: 'Fasiliti Sukan', label: 'Fasiliti Sukan' },
+  { value: 'Ruang Komuniti', label: 'Ruang Komuniti' },
+];
 
 export const StaffLogin = () => {
   const navigate = useNavigate();
@@ -43,8 +61,7 @@ export const StaffLogin = () => {
     
     try {
         const success = await login(username.trim(), password);
-        if (success) {
-        } else {
+        if (!success) {
             setError('Invalid credentials. Hint: use admin / password123');
         }
     } catch (err) {
@@ -90,7 +107,6 @@ export const StaffLogin = () => {
                   setUsername(e.target.value);
                   if(fieldErrors.username) setFieldErrors(prev => ({...prev, username: ''}));
                 }}
-                // Use UserIcon alias
                 icon={<UserIcon size={18}/>} 
                 required
            />
@@ -143,6 +159,7 @@ export const StaffDashboard = () => {
     const [historyLoading, setHistoryLoading] = useState(false);
     const [toast, setToast] = useState({ show: false, message: '' });
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const docInputRef = useRef<HTMLInputElement>(null);
     
     useEffect(() => {
         if (!currentUser) navigate('/staff/login');
@@ -156,7 +173,6 @@ export const StaffDashboard = () => {
       }
     }, [view]);
 
-    // Notification Effect: Show toast for first unread notification
     const unreadNotifications = useMemo(() => {
       return notifications.filter(n => n.recipient === currentUser?.username && !n.read);
     }, [notifications, currentUser]);
@@ -171,10 +187,30 @@ export const StaffDashboard = () => {
 
     const [formData, setFormData] = useState({
         name: '', email: '', phone: '', icNumber: '', purpose: '',
-        startDate: new Date().toISOString().split('T')[0], endDate: '', transportMode: TransportMode.NON_CAR, licensePlate: ''
+        dropOffArea: '', specifiedLocation: '', staffNumber: '', location: '',
+        startDate: '', endDate: '', supportingDocument: '', transportMode: TransportMode.NON_CAR, licensePlate: ''
+    });
+
+    // Default dates
+    useState(() => {
+      const now = new Date();
+      const startStr = now.toISOString().slice(0, 16);
+      const end = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Default +24 hours for staff invites
+      const endStr = end.toISOString().slice(0, 16);
+      setFormData(prev => ({ ...prev, startDate: startStr, endDate: endStr }));
     });
 
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+    const durationDays = useMemo(() => {
+      if (!formData.startDate || !formData.endDate) return 0;
+      const start = new Date(formData.startDate).getTime();
+      const end = new Date(formData.endDate).getTime();
+      if (isNaN(start) || isNaN(end)) return 0;
+      return (end - start) / (1000 * 60 * 60 * 24);
+    }, [formData.startDate, formData.endDate]);
+
+    const isLongTerm = durationDays > 7;
 
     const staffHistory = visitors.filter(v => v.registeredBy === currentUser?.username);
 
@@ -183,9 +219,41 @@ export const StaffDashboard = () => {
       if (!formData.name.trim()) newErrors.name = 'Full name is required';
       if (!formData.email.trim()) newErrors.email = 'Email is required';
       if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
-      if (!formData.purpose.trim()) newErrors.purpose = 'Purpose is required';
+      if (!formData.purpose) newErrors.purpose = 'Purpose is required';
+
+      if (!formData.startDate) newErrors.startDate = 'Start time is required';
+      if (!formData.endDate) newErrors.endDate = 'End time is required';
+      if (new Date(formData.endDate) <= new Date(formData.startDate)) {
+        newErrors.endDate = 'End time must be after start time';
+      }
+
+      if (isLongTerm && !formData.supportingDocument) {
+        newErrors.supportingDocument = 'Supporting document required for > 7 days';
+      }
+
+      const p = formData.purpose;
+      if (['E-Hailing (Driver)', 'Food Services', 'Courier Services', 'Garbage Truck Services', 'Safeguard'].includes(p)) {
+        if (!formData.dropOffArea.trim()) newErrors.dropOffArea = 'Area is required';
+      }
+      if (p === 'Public' && !formData.specifiedLocation) newErrors.specifiedLocation = 'Location is required';
+      if (['External TNB Staff', 'External Staff'].includes(p)) {
+        if (!formData.staffNumber.trim()) newErrors.staffNumber = 'Staff number is required';
+        if (!formData.location.trim()) newErrors.location = 'Location is required';
+      }
+
       setErrors(newErrors);
       return Object.keys(newErrors).length === 0;
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFormData(prev => ({ ...prev, supportingDocument: reader.result as string }));
+        };
+        reader.readAsDataURL(file);
+      }
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -198,10 +266,11 @@ export const StaffDashboard = () => {
                 ...formData,
                 name: formData.name.trim(),
                 visitDate: formData.startDate,
+                endDate: formData.endDate,
                 contact: formData.phone.trim(),
                 email: formData.email.trim(),
                 type: VisitorType.PREREGISTERED,
-                status: VisitorStatus.PENDING, // Changed to PENDING to trigger the operator notification flow
+                status: VisitorStatus.PENDING,
                 registeredBy: currentUser?.username || 'STAFF'
             });
             setLoading(false);
@@ -230,7 +299,6 @@ export const StaffDashboard = () => {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
-                        {/* Use UserIcon alias */}
                         <UserIcon size={20} />
                     </div>
                     <div>
@@ -255,58 +323,67 @@ export const StaffDashboard = () => {
             </div>
 
             <div className="flex border-b border-white/10 mb-6">
-                <button 
-                    onClick={() => setView('register')}
-                    className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${view === 'register' ? 'border-blue-500 text-white' : 'border-transparent text-white/40'}`}
-                >
-                    Invite
-                </button>
-                <button 
-                    onClick={() => setView('history')}
-                    className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${view === 'history' ? 'border-blue-500 text-white' : 'border-transparent text-white/40'}`}
-                >
-                    History
-                </button>
+                <button onClick={() => setView('register')} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${view === 'register' ? 'border-blue-500 text-white' : 'border-transparent text-white/40'}`}>Invite</button>
+                <button onClick={() => setView('history')} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${view === 'history' ? 'border-blue-500 text-white' : 'border-transparent text-white/40'}`}>History</button>
             </div>
 
             {view === 'register' ? (
                 <GlassCard title="Guest Details" className="!p-5 animate-in fade-in slide-in-from-right-4">
                     <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
-                        <Input 
-                          label="Full Name" 
-                          required 
-                          value={formData.name} 
-                          error={errors.name}
-                          onChange={e => setFormData({...formData, name: e.target.value})} 
-                          // Use UserIcon alias
-                          icon={<UserIcon size={16} />} 
-                        />
-                        <Input 
-                          label="Email" 
-                          required 
-                          type="email" 
-                          value={formData.email} 
-                          error={errors.email}
-                          onChange={e => setFormData({...formData, email: e.target.value})} 
-                          icon={<Mail size={16} />} 
-                        />
-                        <Input 
-                          label="Phone" 
-                          required 
-                          type="tel" 
-                          value={formData.phone} 
-                          error={errors.phone}
-                          onChange={e => setFormData({...formData, phone: e.target.value})} 
-                          icon={<Phone size={16} />} 
-                        />
-                        <Input 
-                          label="Purpose" 
-                          required 
-                          value={formData.purpose} 
-                          error={errors.purpose}
-                          onChange={e => setFormData({...formData, purpose: e.target.value})} 
-                          icon={<Briefcase size={16} />} 
-                        />
+                        <Input label="Full Name" required value={formData.name} error={errors.name} onChange={e => setFormData({...formData, name: e.target.value})} icon={<UserIcon size={16} />} />
+                        <Input label="Email" required type="email" value={formData.email} error={errors.email} onChange={e => setFormData({...formData, email: e.target.value})} icon={<Mail size={16} />} />
+                        <Input label="Phone" required type="tel" value={formData.phone} error={errors.phone} onChange={e => setFormData({...formData, phone: e.target.value})} icon={<Phone size={16} />} />
+                        <Select label="Purpose" required options={PURPOSE_OPTIONS} value={formData.purpose} onChange={e => setFormData({...formData, purpose: e.target.value})} />
+                        {errors.purpose && <p className="mb-2 ml-1 text-[10px] text-red-400 font-medium">{errors.purpose}</p>}
+                        
+                        {['E-Hailing (Driver)', 'Food Services', 'Courier Services', 'Garbage Truck Services', 'Safeguard'].includes(formData.purpose) && (
+                          <Input label="Drop-off / Pickup Area" required value={formData.dropOffArea} error={errors.dropOffArea} onChange={e => setFormData({...formData, dropOffArea: e.target.value})} icon={<MapPin size={16} />} />
+                        )}
+
+                        {formData.purpose === 'Public' && (
+                          <Select label="Specified Location" required options={SPECIFIED_LOCATIONS} value={formData.specifiedLocation} onChange={e => setFormData({...formData, specifiedLocation: e.target.value})} />
+                        )}
+                        {formData.purpose === 'Public' && errors.specifiedLocation && <p className="mb-2 ml-1 text-[10px] text-red-400 font-medium">{errors.specifiedLocation}</p>}
+
+                        {['External TNB Staff', 'External Staff'].includes(formData.purpose) && (
+                          <div className="space-y-3">
+                            <Input label="Staff Number" required value={formData.staffNumber} error={errors.staffNumber} onChange={e => setFormData({...formData, staffNumber: e.target.value})} icon={<Hash size={16} />} />
+                            <Input label="Location" required value={formData.location} error={errors.location} onChange={e => setFormData({...formData, location: e.target.value})} icon={<MapPin size={16} />} />
+                          </div>
+                        )}
+
+                        <div className="space-y-4 pt-2 border-t border-white/5">
+                            <Input label="Start Visit Date/Time" required type="datetime-local" value={formData.startDate} error={errors.startDate} onChange={e => setFormData({...formData, startDate: e.target.value})} icon={<Calendar size={16} />} />
+                            <Input label="End Visit Date/Time" required type="datetime-local" value={formData.endDate} error={errors.endDate} onChange={e => setFormData({...formData, endDate: e.target.value})} icon={<Calendar size={16} />} />
+                            
+                            {durationDays > 0 && (
+                              <div className={`p-3 rounded-xl border flex items-center justify-between animate-in zoom-in ${isLongTerm ? 'bg-orange-500/10 border-orange-500/30' : 'bg-blue-500/10 border-blue-500/30'}`}>
+                                <div className="flex items-center gap-2">
+                                  <Clock size={14} className={isLongTerm ? 'text-orange-400' : 'text-blue-400'} />
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-white/50">Duration</span>
+                                </div>
+                                <span className={`text-[10px] font-bold ${isLongTerm ? 'text-orange-400' : 'text-blue-400'}`}>
+                                  {durationDays.toFixed(1)} Days
+                                </span>
+                              </div>
+                            )}
+
+                            {isLongTerm && (
+                                <div className="space-y-2">
+                                  <label className="block text-xs font-medium text-white/60 mb-1 ml-1 uppercase tracking-wider">Supporting Doc (>7 days)</label>
+                                  <button 
+                                    type="button"
+                                    onClick={() => docInputRef.current?.click()}
+                                    className={`w-full py-3 px-4 rounded-xl border-2 border-dashed transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest ${formData.supportingDocument ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/10 text-white/30 hover:bg-white/10'}`}
+                                  >
+                                    {formData.supportingDocument ? <><Check size={14} /> Attached</> : <><FileUp size={14} /> Upload Attachment</>}
+                                  </button>
+                                  <input ref={docInputRef} type="file" className="hidden" onChange={handleFileChange} />
+                                  {errors.supportingDocument && <p className="ml-1 text-[10px] text-red-400 font-medium">{errors.supportingDocument}</p>}
+                                </div>
+                            )}
+                        </div>
+
                         <Button type="submit" loading={loading} className="mt-4 flex items-center justify-center gap-2 group">
                              Generate Invite <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
                         </Button>
@@ -330,7 +407,6 @@ export const StaffDashboard = () => {
                             <div key={v.id} onClick={() => navigate(`/staff/share/${v.id}`)} className="bg-[#151520] border border-white/5 p-4 rounded-2xl flex items-center justify-between cursor-pointer hover:bg-[#1E1E2E] transition-colors group">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 group-hover:bg-blue-500/10 group-hover:text-blue-400 transition-colors">
-                                        {/* Use UserIcon alias */}
                                         <UserIcon size={20} />
                                     </div>
                                     <div>
@@ -451,25 +527,14 @@ export const StaffSharePass = () => {
                 </div>
                 <div className="p-6 relative">
                     <div className="bg-white p-4 rounded-2xl mb-8 mx-auto w-fit shadow-xl transform hover:scale-[1.02] transition-transform duration-300">
-                         {/* Correctly use QRType which is now imported */}
                          <QRCodeDisplay value={visitor.id} type={visitor.status === VisitorStatus.APPROVED ? visitor.qrType : QRType.NONE} />
                     </div>
                     
                     <div className="grid grid-cols-2 gap-3">
-                        <Button 
-                            variant="primary" 
-                            className="flex items-center justify-center gap-2" 
-                            onClick={handleShare}
-                            loading={isSharing}
-                        >
+                        <Button variant="primary" className="flex items-center justify-center gap-2" onClick={handleShare} loading={isSharing}>
                             <Share2 size={16} /> Share Pass
                         </Button>
-                        <Button 
-                            variant="secondary" 
-                            className="flex items-center justify-center gap-2" 
-                            onClick={handleDownload}
-                            loading={isSaving}
-                        >
+                        <Button variant="secondary" className="flex items-center justify-center gap-2" onClick={handleDownload} loading={isSaving}>
                             <Download size={16} /> Download
                         </Button>
                     </div>

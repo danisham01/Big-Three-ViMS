@@ -1,18 +1,36 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import { useStore } from '../store';
-import { GlassCard, Button, Input, StatusBadge, LoadingOverlay, Toast } from '../components/GlassComponents';
+import { GlassCard, Button, Input, Select, StatusBadge, LoadingOverlay, Toast } from '../components/GlassComponents';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
 import { VisitorType, TransportMode, VisitorStatus, QRType } from '../types';
-import { User, Car, Check, AlertCircle, RefreshCw, Share2, Download, Copy, Building2, ChevronRight, ArrowLeft, HelpCircle, Phone, FileText, Briefcase, Calendar, Clock, X, Search, ShieldCheck, Mail, Camera, Image as ImageIcon, CreditCard, Bike } from 'lucide-react';
+import { User, Car, Check, AlertCircle, RefreshCw, Share2, Download, Copy, Building2, ChevronRight, ArrowLeft, HelpCircle, Phone, FileText, Briefcase, Calendar, Clock, X, Search, ShieldCheck, Mail, Camera, Image as ImageIcon, CreditCard, Bike, MapPin, Hash, FileUp, Upload, Ban } from 'lucide-react';
+
+const PURPOSE_OPTIONS = [
+  { value: '', label: 'Select Purpose' },
+  { value: 'E-Hailing (Driver)', label: 'E-Hailing (Driver)' },
+  { value: 'Food Services', label: 'Food Services' },
+  { value: 'Courier Services', label: 'Courier Services' },
+  { value: 'Garbage Truck Services', label: 'Garbage Truck Services' },
+  { value: 'Safeguard', label: 'Safeguard' },
+  { value: 'Public', label: 'Public' },
+  { value: 'External TNB Staff', label: 'External TNB Staff' },
+  { value: 'External Staff', label: 'External Staff' },
+];
+
+const SPECIFIED_LOCATIONS = [
+  { value: '', label: 'Select Specified Location' },
+  { value: 'Balai Islam', label: 'Balai Islam' },
+  { value: 'Taska', label: 'Taska' },
+  { value: 'Fasiliti Sukan', label: 'Fasiliti Sukan' },
+  { value: 'Ruang Komuniti', label: 'Ruang Komuniti' },
+];
 
 export const VisitorLanding = () => {
   const navigate = useNavigate();
   return (
     <div className="flex flex-col min-h-screen pt-12 px-6 max-w-md mx-auto relative">
-      
-      {/* Header Section */}
       <div className="flex flex-col items-center justify-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
         <div className="w-20 h-20 bg-[#1E1E2E] rounded-3xl flex items-center justify-center border border-white/10 shadow-2xl mb-6">
             <Building2 className="text-blue-500" size={40} />
@@ -22,7 +40,6 @@ export const VisitorLanding = () => {
         <p className="text-white/60 text-center text-sm mt-4 max-w-[200px]">Please select your sign-in method to get started.</p>
       </div>
 
-      {/* Cards Section */}
       <div className="flex flex-col gap-4 mb-4">
           <div onClick={() => navigate('/visitor/adhoc')} className="group cursor-pointer">
             <div className="bg-[#151520] hover:bg-[#1E1E2E] border border-white/5 rounded-[2rem] p-5 flex items-center justify-between transition-all duration-300 shadow-lg group-hover:shadow-blue-900/10">
@@ -55,14 +72,12 @@ export const VisitorLanding = () => {
           </div>
       </div>
 
-      {/* Staff Login Link */}
       <div className="text-center mb-auto">
         <p className="text-white/40 text-sm">
             Are you a staff? <Link to="/staff/login" className="text-blue-500 font-bold hover:underline">Login as Staff</Link>
         </p>
       </div>
 
-      {/* Bottom Footer */}
       <div className="flex items-center justify-between py-8 mt-6">
         <button className="px-4 py-2 rounded-full bg-[#1E1E2E] border border-white/5 text-xs font-medium text-white/70 flex items-center gap-2">
             🌐 English
@@ -77,9 +92,11 @@ export const VisitorLanding = () => {
 
 export const VisitorForm = ({ type }: { type: VisitorType }) => {
   const navigate = useNavigate();
-  const { addVisitor } = useStore();
+  const { addVisitor, checkBlacklist } = useStore();
   const [loading, setLoading] = useState(false);
+  const [blacklistError, setBlacklistError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -88,23 +105,45 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
     icNumber: '',
     icPhoto: '',
     purpose: '',
-    visitDate: new Date().toISOString().split('T')[0],
+    dropOffArea: '',
+    specifiedLocation: '',
+    staffNumber: '',
+    location: '',
+    visitDate: '', // Used as Start Date Time
+    endDate: '',   // Used as End Date Time
+    supportingDocument: '',
     transportMode: TransportMode.NON_CAR,
     licensePlate: ''
   });
 
+  // Default values for dates
+  useState(() => {
+    const now = new Date();
+    const startStr = now.toISOString().slice(0, 16);
+    const end = new Date(now.getTime() + 2 * 60 * 60 * 1000); // Default +2 hours
+    const endStr = end.toISOString().slice(0, 16);
+    setFormData(prev => ({ ...prev, visitDate: startStr, endDate: endStr }));
+  });
+
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const durationDays = useMemo(() => {
+    if (!formData.visitDate || !formData.endDate) return 0;
+    const start = new Date(formData.visitDate).getTime();
+    const end = new Date(formData.endDate).getTime();
+    if (isNaN(start) || isNaN(end)) return 0;
+    const diff = end - start;
+    return diff / (1000 * 60 * 60 * 24);
+  }, [formData.visitDate, formData.endDate]);
+
+  const isLongTerm = durationDays > 7;
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
 
     const nameTrimmed = formData.name.trim();
-    if (!nameTrimmed) {
-      newErrors.name = 'Full name is required';
-    } else if (nameTrimmed.length < 3) {
-      newErrors.name = 'Name is too short';
-    }
-
+    if (!nameTrimmed) newErrors.name = 'Full name is required';
+    
     const phoneTrimmed = formData.phone.trim();
     if (!phoneTrimmed) {
       newErrors.phone = 'Phone number is required';
@@ -112,67 +151,78 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
       newErrors.phone = 'Enter a valid phone number';
     }
 
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Enter a valid email address';
+    if (!formData.icNumber.trim()) newErrors.icNumber = 'IC Number is required';
+    if (!formData.purpose) newErrors.purpose = 'Purpose of visit is required';
+
+    // Date Validations
+    if (!formData.visitDate) newErrors.visitDate = 'Start date/time is required';
+    if (!formData.endDate) newErrors.endDate = 'End date/time is required';
+    
+    if (formData.visitDate && formData.endDate) {
+      const start = new Date(formData.visitDate).getTime();
+      const end = new Date(formData.endDate).getTime();
+      if (end <= start) {
+        newErrors.endDate = 'End time must be after start time';
+      }
     }
 
-    if (!formData.icNumber.trim()) {
-      newErrors.icNumber = 'IC Number is required';
+    // Long term validation
+    if (isLongTerm && !formData.supportingDocument) {
+      newErrors.supportingDocument = 'Attachment required for visits over 7 days';
     }
 
-    if (!formData.purpose.trim()) {
-      newErrors.purpose = 'Purpose of visit is required';
+    // Conditional Validations based on Purpose
+    const p = formData.purpose;
+    if (['E-Hailing (Driver)', 'Food Services', 'Courier Services', 'Garbage Truck Services', 'Safeguard'].includes(p)) {
+      if (!formData.dropOffArea.trim()) newErrors.dropOffArea = 'Designated area is required';
+    }
+    if (p === 'Public') {
+      if (!formData.specifiedLocation) newErrors.specifiedLocation = 'Please select a location';
+    }
+    if (['External TNB Staff', 'External Staff'].includes(p)) {
+      if (!formData.staffNumber.trim()) newErrors.staffNumber = 'Staff number is required';
+      if (!formData.location.trim()) newErrors.location = 'Location is required';
+      if (!formData.icPhoto) newErrors.icPhoto = 'ID Snapshot is required';
     }
 
     if (formData.transportMode === TransportMode.CAR) {
-      const plate = formData.licensePlate.trim();
-      if (!plate) {
-        newErrors.licensePlate = 'License plate is required for vehicles';
-      }
+      if (!formData.licensePlate.trim()) newErrors.licensePlate = 'License plate is required';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'icPhoto' | 'supportingDocument') => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, icPhoto: reader.result as string }));
+        setFormData(prev => ({ ...prev, [field]: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const triggerCamera = () => {
-    if (fileInputRef.current) {
-        fileInputRef.current.setAttribute('capture', 'environment');
-        fileInputRef.current.click();
-    }
-  };
-
-  const triggerGallery = () => {
-    if (fileInputRef.current) {
-        fileInputRef.current.removeAttribute('capture');
-        fileInputRef.current.click();
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setBlacklistError(null);
     if (!validate()) return;
     
     setLoading(true);
     setTimeout(() => {
-      const visitor = addVisitor({
-        ...formData,
-        contact: formData.phone, // Map phone to contact
-        type,
-      });
-      setLoading(false);
-      navigate(`/visitor/wallet/${visitor.id}`);
+      try {
+        const visitor = addVisitor({
+          ...formData,
+          contact: formData.phone,
+          type,
+        });
+        setLoading(false);
+        navigate(`/visitor/wallet/${visitor.id}`);
+      } catch (err: any) {
+        setLoading(false);
+        setBlacklistError(err.message);
+      }
     }, 1500);
   };
 
@@ -194,9 +244,17 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
           <h1 className="text-3xl font-bold text-white mb-2">Registration</h1>
           <p className="text-white/50 text-sm">Complete your details for building access.</p>
       </div>
+
+      {blacklistError && (
+        <div className="mb-6 p-6 bg-red-600/10 border-2 border-red-500/30 rounded-3xl animate-in zoom-in text-center">
+          <Ban size={48} className="text-red-500 mx-auto mb-3" />
+          <h3 className="text-xl font-bold text-white mb-2">Access Denied</h3>
+          <p className="text-red-200/70 text-sm font-medium leading-relaxed">{blacklistError}</p>
+          <p className="text-[10px] text-white/30 mt-4 uppercase tracking-[0.2em] font-black">Ref: BLACKLIST_ENTRY_ATTEMPT</p>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
-        {/* Identity Verification */}
         <GlassCard title="Identity Verification" className="!p-5 !pb-2">
             <Input 
                 label="Full Name" 
@@ -218,7 +276,9 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
             />
 
             <div className="mb-4">
-                <label className="block text-xs font-medium text-white/60 mb-2 ml-1 uppercase tracking-wider">IC / ID Photo</label>
+                <label className="block text-xs font-medium text-white/60 mb-2 ml-1 uppercase tracking-wider">
+                  {['External TNB Staff', 'External Staff'].includes(formData.purpose) ? 'ID Snapshot (Required)' : 'IC / ID Photo'}
+                </label>
                 <div className="flex flex-col gap-3">
                     {formData.icPhoto ? (
                         <div className="relative group rounded-2xl overflow-hidden aspect-video border border-white/10 bg-black/40">
@@ -230,25 +290,20 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                             >
                                 <X size={16} />
                             </button>
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button type="button" onClick={triggerCamera} className="bg-white/10 p-3 rounded-full hover:bg-white/20 transition-colors backdrop-blur-md">
-                                    <RefreshCw className="text-white" size={24} />
-                                </button>
-                            </div>
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 gap-3">
                             <button 
                                 type="button" 
-                                onClick={triggerCamera}
+                                onClick={() => fileInputRef.current?.click()}
                                 className="flex flex-col items-center justify-center gap-2 py-8 bg-[#151520] hover:bg-[#1E1E2E] border border-white/5 border-dashed rounded-2xl text-white/40 hover:text-white transition-all"
                             >
                                 <Camera size={24} />
-                                <span className="text-[10px] font-bold uppercase tracking-widest">Take Photo</span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest">Snapshot</span>
                             </button>
                             <button 
                                 type="button" 
-                                onClick={triggerGallery}
+                                onClick={() => { if(fileInputRef.current) { fileInputRef.current.removeAttribute('capture'); fileInputRef.current.click(); } }}
                                 className="flex flex-col items-center justify-center gap-2 py-8 bg-[#151520] hover:bg-[#1E1E2E] border border-white/5 border-dashed rounded-2xl text-white/40 hover:text-white transition-all"
                             >
                                 <ImageIcon size={24} />
@@ -260,14 +315,15 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                         ref={fileInputRef}
                         type="file" 
                         accept="image/*" 
+                        capture="environment"
                         className="hidden" 
-                        onChange={handleFileChange}
+                        onChange={e => handleFileChange(e, 'icPhoto')}
                     />
                 </div>
+                {errors.icPhoto && <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium">{errors.icPhoto}</p>}
             </div>
         </GlassCard>
 
-        {/* Contact Information */}
         <GlassCard title="Contact Info" className="!p-5 !pb-2">
             <Input 
                 label="Phone Number" 
@@ -290,29 +346,133 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
             />
         </GlassCard>
 
-        {/* Visit Details */}
         <GlassCard title="Visit Details" className="!p-5 !pb-2">
-            <Input 
-                label="Purpose" 
-                required 
+            <Select 
+                label="Purpose of Visit"
+                required
+                options={PURPOSE_OPTIONS}
                 value={formData.purpose}
                 error={errors.purpose}
                 onChange={e => setFormData({...formData, purpose: e.target.value})}
-                placeholder="e.g. Business Meeting"
-                icon={<Briefcase size={18} />}
             />
-            <Input 
-                label="Visit Date" 
-                type="date"
-                required 
-                value={formData.visitDate}
-                error={errors.visitDate}
-                onChange={e => setFormData({...formData, visitDate: e.target.value})}
-                icon={<Calendar size={18} />}
-            />
+
+            {/* Conditional Fields based on Purpose */}
+            {['E-Hailing (Driver)', 'Food Services', 'Courier Services', 'Garbage Truck Services', 'Safeguard'].includes(formData.purpose) && (
+              <div className="animate-in slide-in-from-top-2">
+                <Input 
+                  label="Designated Drop-off / Pickup Area"
+                  required
+                  value={formData.dropOffArea}
+                  error={errors.dropOffArea}
+                  onChange={e => setFormData({...formData, dropOffArea: e.target.value})}
+                  placeholder="e.g. Block A Lobby"
+                  icon={<MapPin size={18} />}
+                />
+              </div>
+            )}
+
+            {formData.purpose === 'Public' && (
+              <div className="animate-in slide-in-from-top-2">
+                <Select 
+                  label="Specified Location"
+                  required
+                  options={SPECIFIED_LOCATIONS}
+                  value={formData.specifiedLocation}
+                  error={errors.specifiedLocation}
+                  onChange={e => setFormData({...formData, specifiedLocation: e.target.value})}
+                />
+              </div>
+            )}
+
+            {['External TNB Staff', 'External Staff'].includes(formData.purpose) && (
+              <div className="animate-in slide-in-from-top-2 space-y-4">
+                <Input 
+                  label="Staff Number"
+                  required
+                  value={formData.staffNumber}
+                  error={errors.staffNumber}
+                  onChange={e => setFormData({...formData, staffNumber: e.target.value})}
+                  placeholder="TNB-12345"
+                  icon={<Hash size={18} />}
+                />
+                <Input 
+                  label="Location"
+                  required
+                  value={formData.location}
+                  error={errors.location}
+                  onChange={e => setFormData({...formData, location: e.target.value})}
+                  placeholder="e.g. Server Room, Floor 5"
+                  icon={<MapPin size={18} />}
+                />
+              </div>
+            )}
+
+            {/* Visit Range */}
+            <div className="space-y-4 pt-2">
+                <Input 
+                    label="Start Visit Date/Time" 
+                    type="datetime-local"
+                    required 
+                    value={formData.visitDate}
+                    error={errors.visitDate}
+                    onChange={e => setFormData({...formData, visitDate: e.target.value})}
+                    icon={<Calendar size={18} />}
+                />
+                <Input 
+                    label="End Visit Date/Time" 
+                    type="datetime-local"
+                    required 
+                    value={formData.endDate}
+                    error={errors.endDate}
+                    onChange={e => setFormData({...formData, endDate: e.target.value})}
+                    icon={<Calendar size={18} />}
+                />
+
+                {durationDays > 0 && (
+                  <div className={`p-3 rounded-xl border flex items-center justify-between animate-in fade-in zoom-in ${isLongTerm ? 'bg-orange-500/10 border-orange-500/30' : 'bg-blue-500/10 border-blue-500/30'}`}>
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} className={isLongTerm ? 'text-orange-400' : 'text-blue-400'} />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/70">Visit Duration</span>
+                    </div>
+                    <span className={`text-xs font-bold ${isLongTerm ? 'text-orange-400' : 'text-blue-400'}`}>
+                      {durationDays.toFixed(1)} Days
+                    </span>
+                  </div>
+                )}
+
+                {isLongTerm && (
+                  <div className="animate-in slide-in-from-top-2 space-y-3">
+                    <div className="p-3 bg-blue-600/10 border border-blue-500/30 rounded-xl flex gap-3">
+                      <AlertCircle className="text-blue-400 shrink-0" size={18} />
+                      <p className="text-[10px] leading-relaxed text-blue-200/70 font-medium">
+                        <span className="font-bold text-white block mb-0.5">Extended Stay Policy</span>
+                        Required for host/approver reference when visit duration exceeds 7 days.
+                      </p>
+                    </div>
+                    
+                    <div className="relative">
+                      <label className="block text-xs font-medium text-white/60 mb-2 ml-1 uppercase tracking-wider">Supporting Document (Required)</label>
+                      <button 
+                        type="button"
+                        onClick={() => docInputRef.current?.click()}
+                        className={`w-full py-4 px-4 rounded-2xl border-2 border-dashed transition-all flex items-center justify-center gap-3 ${formData.supportingDocument ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}
+                      >
+                        {formData.supportingDocument ? <><Check size={18} /> Document Attached</> : <><FileUp size={18} /> Upload PDF / Image</>}
+                      </button>
+                      <input 
+                        ref={docInputRef}
+                        type="file" 
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={e => handleFileChange(e, 'supportingDocument')}
+                      />
+                      {errors.supportingDocument && <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium">{errors.supportingDocument}</p>}
+                    </div>
+                  </div>
+                )}
+            </div>
         </GlassCard>
 
-        {/* Transportation */}
         <GlassCard title="Transportation" className="!p-5">
             <div className="bg-[#121217] p-1 rounded-xl flex mb-4">
                 <button
@@ -441,8 +601,8 @@ export const VisitorWallet = () => {
     const visitor = getVisitorByCode(id || '');
 
     const [rescheduleData, setRescheduleData] = useState({
-        date: visitor?.visitDate ? visitor.visitDate.split('T')[0] : '',
-        time: '09:00'
+        date: visitor?.visitDate ? visitor.visitDate.slice(0, 10) : '',
+        time: visitor?.visitDate ? visitor.visitDate.slice(11, 16) : '09:00'
     });
 
     if (!visitor) {
@@ -516,15 +676,27 @@ export const VisitorWallet = () => {
 
     const handleSaveReschedule = async () => {
         setSaveLoading(true);
-        // Simulate API delay
         await new Promise(r => setTimeout(r, 1200));
         updateVisitor(visitor.id, { 
-            visitDate: new Date(`${rescheduleData.date}T${rescheduleData.time}`).toISOString() 
+            visitDate: `${rescheduleData.date}T${rescheduleData.time}:00.000Z`
         });
         setSaveLoading(false);
         setIsRescheduling(false);
         setToast({ show: true, message: 'Visit rescheduled successfully!' });
     };
+
+    const getDurationWarning = () => {
+      const p = visitor.purpose;
+      if (['E-Hailing (Driver)', 'Food Services', 'Courier Services'].includes(p)) {
+        return "This visit must be completed within 45 minutes.";
+      }
+      if (['Garbage Truck Services', 'Safeguard'].includes(p)) {
+        return "This visit must be completed within 2 hours.";
+      }
+      return null;
+    };
+
+    const durationWarning = getDurationWarning();
 
     return (
         <div className="max-w-md mx-auto pt-6 px-4 pb-24">
@@ -609,6 +781,14 @@ export const VisitorWallet = () => {
                                     <RefreshCw size={12} className="inline mr-1 animate-spin"/> Awaiting approval. Pass will activate automatically.
                                 </p>
                             )}
+
+                            {/* Duration Warning for Approved Visitors */}
+                            {visitor.status === VisitorStatus.APPROVED && durationWarning && (
+                              <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                                <Clock size={20} className="text-emerald-400 shrink-0" />
+                                <p className="text-emerald-200 text-xs font-bold text-left">{durationWarning}</p>
+                              </div>
+                            )}
                         </div>
                     ) : (
                         <div className="py-6 bg-red-500/10 rounded-xl border border-red-500/20">
@@ -632,8 +812,9 @@ export const VisitorWallet = () => {
                                     <Calendar size={20} />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] text-white/30 uppercase font-bold tracking-widest">Visit Date</p>
-                                    <p className="text-sm font-bold text-white">{new Date(visitor.visitDate).toLocaleDateString()}</p>
+                                    <p className="text-[10px] text-white/30 uppercase font-bold tracking-widest">Visit Range</p>
+                                    <p className="text-xs font-bold text-white">{new Date(visitor.visitDate).toLocaleString()}</p>
+                                    {visitor.endDate && <p className="text-[10px] text-white/30 mt-1">to {new Date(visitor.endDate).toLocaleString()}</p>}
                                 </div>
                             </div>
                             <Button 
@@ -649,19 +830,15 @@ export const VisitorWallet = () => {
                             <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
                                 <Clock size={16} className="text-blue-400"/> Modify Visit Schedule
                             </h3>
-                            <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div className="grid grid-cols-1 gap-3 mb-4">
                                 <Input 
-                                    type="date" 
-                                    label="New Date" 
-                                    value={rescheduleData.date}
-                                    onChange={(e) => setRescheduleData({...rescheduleData, date: e.target.value})}
-                                    className="!mb-0 !py-3 !px-4 !text-xs"
-                                />
-                                <Input 
-                                    type="time" 
-                                    label="New Time" 
-                                    value={rescheduleData.time}
-                                    onChange={(e) => setRescheduleData({...rescheduleData, time: e.target.value})}
+                                    type="datetime-local" 
+                                    label="New Start Time" 
+                                    value={rescheduleData.date + 'T' + rescheduleData.time}
+                                    onChange={(e) => {
+                                      const parts = e.target.value.split('T');
+                                      setRescheduleData({...rescheduleData, date: parts[0], time: parts[1]});
+                                    }}
                                     className="!mb-0 !py-3 !px-4 !text-xs"
                                 />
                             </div>

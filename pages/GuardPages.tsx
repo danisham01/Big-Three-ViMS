@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { GlassCard, Button, Input, Spinner, ConfirmModal } from '../components/GlassComponents';
 import { VisitorStatus, QRType, UserRole } from '../types';
-import { Scan, AlertTriangle, Unlock, LogOut, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Scan, AlertTriangle, Unlock, LogOut, CheckCircle2, ShieldAlert, Ban } from 'lucide-react';
 
 const AccessPoint = ({ name, type, allowedQRs, allowLPR }: { 
     name: string, 
@@ -12,10 +12,10 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
     allowedQRs: QRType[],
     allowLPR: boolean 
 }) => {
-    const { getVisitorByCode, getVisitorByPlate, logAccess } = useStore();
+    const { getVisitorByCode, getVisitorByPlate, logAccess, checkBlacklist } = useStore();
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [message, setMessage] = useState<{type: 'success' | 'error' | 'info', text: string} | null>(null);
+    const [message, setMessage] = useState<{type: 'success' | 'error' | 'info' | 'blacklist', text: string} | null>(null);
 
     const handleScan = () => {
         if (!input.trim()) return;
@@ -38,7 +38,25 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
             }
 
             if (!visitor) {
+                // Check if the identifier itself is blacklisted (e.g., LPR plate scan of unauthorized vehicle)
+                const blacklisted = checkBlacklist(undefined, trimmedInput, trimmedInput);
+                if (blacklisted) {
+                    setMessage({ type: 'blacklist', text: `Blacklisted: ${blacklisted.reason}` });
+                    logAccess({ visitorId: 'BLACKLISTED', visitorName: trimmedInput, action: 'BLACKLIST_HIT', location: type, method: method, details: `Identifier hit: ${trimmedInput}` });
+                    setIsLoading(false);
+                    return;
+                }
+
                 setMessage({ type: 'error', text: 'Record not found.' });
+                setIsLoading(false);
+                return;
+            }
+
+            // Visitor found, check their details against blacklist
+            const blacklisted = checkBlacklist(visitor.icNumber, visitor.licensePlate, visitor.contact);
+            if (blacklisted) {
+                setMessage({ type: 'blacklist', text: `Blacklisted: ${blacklisted.reason}` });
+                logAccess({ visitorId: visitor.id, visitorName: visitor.name, action: 'BLACKLIST_HIT', location: type, method: method, details: 'Visitor matched blacklist' });
                 setIsLoading(false);
                 return;
             }
@@ -70,7 +88,8 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
     const getBorderClass = () => {
         if (!message) return 'border-white/5';
         if (message.type === 'success') return 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)]';
-        if (message.type === 'error') return 'border-red-500/50 shadow-[0_0_20px_rgba(239,68,68,0.2)]';
+        if (message.type === 'error') return 'border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.1)]';
+        if (message.type === 'blacklist') return 'border-red-600 shadow-[0_0_25px_rgba(220,38,38,0.4)] animate-pulse';
         return 'border-white/5';
     };
 
@@ -94,7 +113,7 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
                              </div>
                          ) : (
                              <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400">
-                                 <ShieldAlert size={18} />
+                                 {message.type === 'blacklist' ? <Ban size={18} /> : <ShieldAlert size={18} />}
                              </div>
                          )}
                     </div>
@@ -108,7 +127,7 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
                         value={input}
                         disabled={isLoading}
                         onChange={(e) => setInput(e.target.value)}
-                        className={`text-center font-mono tracking-widest !mb-0 h-14 transition-all duration-300 ${message?.type === 'error' ? 'ring-2 ring-red-500/50' : ''}`}
+                        className={`text-center font-mono tracking-widest !mb-0 h-14 transition-all duration-300 ${message?.type === 'error' || message?.type === 'blacklist' ? 'ring-2 ring-red-500/50' : ''}`}
                     />
                     {isLoading && (
                         <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -130,9 +149,10 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
                     {message && (
                         <div className={`w-full p-4 rounded-2xl text-[11px] font-black text-center animate-in fade-in slide-in-from-top-2 border flex items-center justify-center gap-2 ${
                             message.type === 'success' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' :
-                            message.type === 'error' ? 'bg-red-500/10 text-red-300 border-red-500/20' : 'bg-blue-500/10 text-blue-300'
+                            message.type === 'blacklist' ? 'bg-red-900/40 text-red-400 border-red-600 animate-pulse' :
+                            'bg-red-500/10 text-red-300 border-red-500/20'
                         }`}>
-                            {message.type === 'success' ? <CheckCircle2 size={16} /> : <ShieldAlert size={16} />}
+                            {message.type === 'success' ? <CheckCircle2 size={16} /> : <Ban size={16} />}
                             <span className="uppercase tracking-wider">{message.text}</span>
                         </div>
                     )}

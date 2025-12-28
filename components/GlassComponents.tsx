@@ -67,6 +67,8 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   autoFocus?: boolean;
   icon?: React.ReactNode; 
   suffix?: React.ReactNode;
+  disabled?: boolean;
+  onClick?: React.MouseEventHandler<HTMLInputElement>;
 }
 
 export const Input = ({ label, error, className = '', icon, suffix, ...props }: InputProps) => (
@@ -99,19 +101,28 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   className?: string;
   value?: string | number | readonly string[];
   onChange?: React.ChangeEventHandler<HTMLSelectElement>;
+  error?: string;
+  // Explicitly add required to fix TS errors when passed to the component
+  required?: boolean;
 }
 
-export const Select = ({ label, options, className = '', ...props }: SelectProps) => (
+export const Select = ({ label, options, className = '', error, ...props }: SelectProps) => (
   <div className="mb-4">
     {label && <label className="block text-xs font-medium text-white/60 mb-2 ml-1 uppercase tracking-wider">{label}</label>}
-    <select 
-      className={`w-full bg-white text-gray-900 border-none rounded-2xl px-4 py-4 focus:outline-none focus:ring-4 focus:ring-blue-500/20 appearance-none font-medium ${className}`}
-      {...props}
-    >
-      {options.map(opt => (
-        <option key={opt.value} value={opt.value} className="text-gray-900">{opt.label}</option>
-      ))}
-    </select>
+    <div className="relative group">
+      <select 
+        className={`w-full bg-white text-gray-900 border-none rounded-2xl px-4 py-4 focus:outline-none focus:ring-4 focus:ring-blue-500/20 appearance-none font-medium ${className} ${error ? 'ring-1 ring-red-500/50' : ''}`}
+        {...props}
+      >
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value} className="text-gray-900">{opt.label}</option>
+        ))}
+      </select>
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </div>
+    {error && <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium animate-in fade-in slide-in-from-top-1">{error}</p>}
   </div>
 );
 

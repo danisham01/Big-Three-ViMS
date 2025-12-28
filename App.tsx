@@ -6,9 +6,10 @@ import { VisitorLanding, VisitorForm, VisitorWallet, VisitorStatusCheck } from '
 import { OperatorDashboard } from './pages/OperatorPages';
 import { GuardConsole } from './pages/GuardPages';
 import { StaffLogin, StaffDashboard, StaffSharePass } from './pages/StaffPages';
+import { BlacklistPage } from './pages/BlacklistPage';
 import { ChatBot } from './components/ChatBot';
 import { VisitorType, UserRole } from './types';
-import { Shield, Users, Eye, Search, Home, LayoutDashboard, History, Settings, UserCircle, Briefcase } from 'lucide-react';
+import { Shield, Users, Eye, Search, Home, LayoutDashboard, History, Settings, UserCircle, Briefcase, Ban } from 'lucide-react';
 
 const Navigation = () => {
   const { currentUser } = useStore();
@@ -33,7 +34,7 @@ const Navigation = () => {
 
           {/* Role Based - STAFF or ADMIN */}
           {currentUser && (
-              <Link to="/staff/dashboard" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/staff') ? 'text-blue-500' : 'text-gray-500'}`}>
+              <Link to="/staff/dashboard" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/staff') && !path.includes('/login') ? 'text-blue-500' : 'text-gray-500'}`}>
                   <Briefcase size={22} />
                   <span className="text-[10px] font-medium">Tools</span>
               </Link>
@@ -49,6 +50,10 @@ const Navigation = () => {
                   <Link to="/guard" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/guard') ? 'text-blue-500' : 'text-gray-500'}`}>
                       <Shield size={22} />
                       <span className="text-[10px] font-medium">Guard</span>
+                  </Link>
+                  <Link to="/blacklist" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/blacklist') ? 'text-red-500' : 'text-gray-500'}`}>
+                      <Ban size={22} />
+                      <span className="text-[10px] font-medium">Ban</span>
                   </Link>
               </>
           )}
@@ -97,6 +102,7 @@ const App = () => {
             <Route path="/visitor/wallet/:id" element={<VisitorWallet />} />
             <Route path="/operator" element={<OperatorDashboard />} />
             <Route path="/guard" element={<GuardConsole />} />
+            <Route path="/blacklist" element={<BlacklistPage />} />
             <Route path="/staff/login" element={<StaffLogin />} />
             <Route path="/staff/dashboard" element={<StaffDashboard />} />
             <Route path="/staff/share/:id" element={<StaffSharePass />} />

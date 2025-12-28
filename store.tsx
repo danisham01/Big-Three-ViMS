@@ -1,11 +1,12 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Visitor, AccessLog, VisitorType, TransportMode, VisitorStatus, QRType, User, UserRole, Notification } from './types';
+import { Visitor, AccessLog, VisitorType, TransportMode, VisitorStatus, QRType, User, UserRole, Notification, BlacklistRecord } from './types';
 
 interface StoreContextType {
   visitors: Visitor[];
   logs: AccessLog[];
   notifications: Notification[];
+  blacklist: BlacklistRecord[];
   currentUser: User | null;
   addVisitor: (visitor: Omit<Visitor, 'id' | 'qrType' | 'status'> & { status?: VisitorStatus }) => Visitor;
   updateVisitorStatus: (id: string, status: VisitorStatus, reason?: string) => void;
@@ -16,6 +17,9 @@ interface StoreContextType {
   getVisitorByPlate: (plate: string) => Visitor | undefined;
   login: (username: string, pass: string) => Promise<boolean>;
   logout: () => void;
+  addToBlacklist: (record: Omit<BlacklistRecord, 'id' | 'timestamp' | 'status'>) => void;
+  removeFromBlacklist: (id: string) => void;
+  checkBlacklist: (ic?: string, plate?: string, phone?: string) => BlacklistRecord | undefined;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -41,55 +45,48 @@ const generateUniqueCode = (existingVisitors: Visitor[]) => {
   return code;
 };
 
-const INITIAL_VISITORS: Visitor[] = [
-  {
-    id: '45892',
-    name: 'Alice Walker',
-    contact: '+15550101',
-    email: 'alice@example.com',
-    purpose: 'Business Meeting',
-    visitDate: new Date().toISOString(),
-    type: VisitorType.PREREGISTERED,
-    transportMode: TransportMode.NON_CAR,
-    status: VisitorStatus.PENDING,
-    qrType: QRType.QR3,
-    registeredBy: 'staff1'
-  },
-  {
-    id: '12543',
-    name: 'Bob Builder',
-    contact: '+15550102',
-    purpose: 'Maintenance',
-    visitDate: new Date(Date.now() - 3600000).toISOString(),
-    type: VisitorType.ADHOC,
-    transportMode: TransportMode.CAR,
-    licensePlate: 'ABC-999',
-    status: VisitorStatus.APPROVED,
-    qrType: QRType.NONE,
-    timeIn: new Date(Date.now() - 3600000).toISOString(),
-    registeredBy: 'SELF'
-  }
-];
+const normalizePlate = (plate?: string) => plate?.toUpperCase().replace(/[^A-Z0-9]/g, '') || '';
+const normalizePhone = (phone?: string) => phone?.replace(/[^0-9+]/g, '') || '';
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [visitors, setVisitors] = useState<Visitor[]>(INITIAL_VISITORS);
+  const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [blacklist, setBlacklist] = useState<BlacklistRecord[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('vms_session');
     return saved ? JSON.parse(saved) : null;
   });
   
-  const [logs, setLogs] = useState<AccessLog[]>([
-    {
-       id: 'l-1',
-       visitorId: '12543',
-       visitorName: 'Bob Builder',
-       timestamp: new Date(Date.now() - 3600000).toISOString(),
-       action: 'ENTRY',
-       location: 'FRONT_GATE',
-       method: 'LPR'
-    }
-  ]);
+  const [logs, setLogs] = useState<AccessLog[]>([]);
+
+  const checkBlacklist = (ic?: string, plate?: string, phone?: string) => {
+    const normPlate = normalizePlate(plate);
+    const normPhone = normalizePhone(phone);
+
+    return blacklist.find(record => {
+      if (record.status !== 'ACTIVE') return false;
+      
+      const icMatch = ic && record.icNumber === ic;
+      const plateMatch = normPlate && normalizePlate(record.licensePlate) === normPlate;
+      const phoneMatch = normPhone && normalizePhone(record.phone) === normPhone;
+
+      return icMatch || plateMatch || phoneMatch;
+    });
+  };
+
+  const addToBlacklist = (record: Omit<BlacklistRecord, 'id' | 'timestamp' | 'status'>) => {
+    const newRecord: BlacklistRecord = {
+      ...record,
+      id: `bl-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      status: 'ACTIVE',
+    };
+    setBlacklist(prev => [newRecord, ...prev]);
+  };
+
+  const removeFromBlacklist = (id: string) => {
+    setBlacklist(prev => prev.map(r => r.id === id ? { ...r, status: 'UNBANNED' } : r));
+  };
 
   const login = async (username: string, pass: string): Promise<boolean> => {
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -109,6 +106,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const addVisitor = (data: Omit<Visitor, 'id' | 'qrType' | 'status'> & { status?: VisitorStatus }) => {
+    // Enforcement: Check Blacklist
+    const blacklisted = checkBlacklist(data.icNumber, data.licensePlate, data.contact);
+    if (blacklisted) {
+      throw new Error(`Access Denied — Blacklisted. Reason: ${blacklisted.reason}`);
+    }
+
     const isAdhoc = data.type === VisitorType.ADHOC;
     const status = data.status || (isAdhoc ? VisitorStatus.APPROVED : VisitorStatus.PENDING);
     
@@ -126,7 +129,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateVisitorStatus = (id: string, status: VisitorStatus, reason?: string) => {
     setVisitors(prev => prev.map(v => {
       if (v.id === id) {
-        // Send notification to staff member who registered the visitor
         if (v.registeredBy && v.registeredBy !== 'SELF') {
           const newNotif: Notification = {
             id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -179,13 +181,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const getVisitorByCode = (code: string) => visitors.find(v => v.id === code);
-  const getVisitorByPlate = (plate: string) => visitors.find(v => v.licensePlate === plate);
+  const getVisitorByPlate = (plate: string) => visitors.find(v => normalizePlate(v.licensePlate) === normalizePlate(plate));
 
   return (
     <StoreContext.Provider value={{ 
         visitors, 
         logs, 
         notifications,
+        blacklist,
         currentUser,
         addVisitor, 
         updateVisitorStatus, 
@@ -195,7 +198,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         getVisitorByCode, 
         getVisitorByPlate,
         login,
-        logout
+        logout,
+        addToBlacklist,
+        removeFromBlacklist,
+        checkBlacklist
     }}>
       {children}
     </StoreContext.Provider>
