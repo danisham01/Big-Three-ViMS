@@ -263,14 +263,36 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
     licensePlate: ''
   });
 
-  // Default values for dates
-  useState(() => {
+  // Constraints for Today
+  const todayRange = useMemo(() => {
     const now = new Date();
-    const startStr = now.toISOString().slice(0, 16);
-    const end = new Date(now.getTime() + 2 * 60 * 60 * 1000); // Default +2 hours
-    const endStr = end.toISOString().slice(0, 16);
-    setFormData(prev => ({ ...prev, visitDate: startStr, endDate: endStr }));
-  });
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+    return {
+      startStr: start.toISOString().slice(0, 16),
+      endStr: end.toISOString().slice(0, 16),
+      displayDate: now.toLocaleDateString(undefined, { dateStyle: 'full' })
+    };
+  }, []);
+
+  // Initialize dates
+  useEffect(() => {
+    if (type === VisitorType.ADHOC) {
+      // For Ad-hoc: Force whole day today
+      setFormData(prev => ({ 
+        ...prev, 
+        visitDate: todayRange.startStr, 
+        endDate: todayRange.endStr 
+      }));
+    } else {
+      // For Pre-registered: Default to current hour +2 hours
+      const now = new Date();
+      const startStr = now.toISOString().slice(0, 16);
+      const end = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      const endStr = end.toISOString().slice(0, 16);
+      setFormData(prev => ({ ...prev, visitDate: startStr, endDate: endStr }));
+    }
+  }, [type, todayRange]);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -559,40 +581,63 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
               </div>
             )}
 
-            {/* Visit Range */}
+            {/* Visit Range Selection */}
             <div className="space-y-4 pt-2">
-                <Input 
-                    label="Start Visit Date/Time" 
-                    type="datetime-local"
-                    required 
-                    value={formData.visitDate}
-                    error={errors.visitDate}
-                    onChange={e => setFormData({...formData, visitDate: e.target.value})}
-                    icon={<Calendar size={18} />}
-                />
-                <Input 
-                    label="End Visit Date/Time" 
-                    type="datetime-local"
-                    required 
-                    value={formData.endDate}
-                    error={errors.endDate}
-                    onChange={e => setFormData({...formData, endDate: e.target.value})}
-                    icon={<Calendar size={18} />}
-                />
-
-                {durationDays > 0 && (
-                  <div className={`p-3 rounded-xl border flex items-center justify-between animate-in fade-in zoom-in ${isLongTerm ? 'bg-orange-500/10 border-orange-500/30' : 'bg-blue-100 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30'}`}>
-                    <div className="flex items-center gap-2">
-                      <Clock size={16} className={isLongTerm ? 'text-orange-500 dark:text-orange-400' : 'text-blue-500 dark:text-blue-400'} />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/70">Visit Duration</span>
+                {type === VisitorType.ADHOC ? (
+                  /* Ad-hoc: Read-only Fixed whole day today */
+                  <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200 dark:border-white/5 animate-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3 mb-1">
+                      <Calendar size={18} className="text-blue-500" />
+                      <p className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-white/70">Visit Duration</p>
                     </div>
-                    <span className={`text-xs font-bold ${isLongTerm ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                      {durationDays.toFixed(1)} Days
-                    </span>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white ml-8">
+                      {todayRange.displayDate}
+                    </p>
+                    <div className="flex items-center gap-3 mt-3">
+                      <Clock size={18} className="text-emerald-500" />
+                      <p className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-white/70">Access Window</p>
+                    </div>
+                    <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 ml-8 uppercase">
+                      All Day Access (00:00 - 23:59)
+                    </p>
                   </div>
+                ) : (
+                  /* Pre-registered: Allow date/time selection */
+                  <>
+                    <Input 
+                        label="Start Visit Date/Time" 
+                        type="datetime-local"
+                        required 
+                        value={formData.visitDate}
+                        error={errors.visitDate}
+                        onChange={e => setFormData({...formData, visitDate: e.target.value})}
+                        icon={<Calendar size={18} />}
+                    />
+                    <Input 
+                        label="End Visit Date/Time" 
+                        type="datetime-local"
+                        required 
+                        value={formData.endDate}
+                        error={errors.endDate}
+                        onChange={e => setFormData({...formData, endDate: e.target.value})}
+                        icon={<Calendar size={18} />}
+                    />
+
+                    {durationDays > 0 && (
+                      <div className={`p-3 rounded-xl border flex items-center justify-between animate-in fade-in zoom-in ${isLongTerm ? 'bg-orange-500/10 border-orange-500/30' : 'bg-blue-100 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30'}`}>
+                        <div className="flex items-center gap-2">
+                          <Clock size={16} className={isLongTerm ? 'text-orange-500 dark:text-orange-400' : 'text-blue-500 dark:text-blue-400'} />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/70">Visit Duration</span>
+                        </div>
+                        <span className={`text-xs font-bold ${isLongTerm ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                          {durationDays < 1 ? `${(durationDays * 24).toFixed(1)} Hours` : `${durationDays.toFixed(1)} Days`}
+                        </span>
+                      </div>
+                    )}
+                  </>
                 )}
 
-                {isLongTerm && (
+                {isLongTerm && type !== VisitorType.ADHOC && (
                   <div className="animate-in slide-in-from-top-2 space-y-3">
                     <div className="p-3 bg-blue-100 dark:bg-blue-600/10 border border-blue-200 dark:border-blue-500/30 rounded-xl flex gap-3">
                       <AlertCircle className="text-blue-500 dark:text-blue-400 shrink-0" size={18} />
@@ -683,6 +728,7 @@ export const VisitorStatusCheck = () => {
     const [loading, setLoading] = useState(false);
 
     const handleCheck = (e: React.FormEvent) => {
+        // FIXED: Corrected event method call to e.preventDefault()
         e.preventDefault();
         setError('');
         const trimmedCode = code.trim();
@@ -752,6 +798,7 @@ export const VisitorWallet = () => {
 
     if (!visitor) {
         return (
+            // FIXED: Corrected className syntax from (flex... to className="flex...
             <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
                 <div className="w-16 h-16 bg-red-100 dark:bg-red-500/10 rounded-full flex items-center justify-center text-red-500 mb-4">
                     <AlertCircle size={32} />

@@ -6,9 +6,14 @@ import { GlassCard, Button, StatusBadge, Skeleton, VisitorCardSkeleton, HistoryI
 import { EntryAnalytics } from '../components/EntryAnalytics';
 import { VisitorStatus, Visitor, UserRole, TransportMode, VipRecord, VipType } from '../types';
 import { VipDetailModal } from './VipPages';
-import { CheckCircle, XCircle, Filter, User, Clock, Briefcase, LogOut, Search, Car, User as UserIcon, ListFilter, X, Calendar, ArrowRight, AlertCircle, Send, BellRing, Bike, Phone, Mail, CreditCard, ExternalLink, CalendarDays, MapPin, Hash, UserCheck, Crown, ShieldCheck } from 'lucide-react';
+import { CheckCircle, XCircle, Filter, User, Clock, Briefcase, LogOut, Search, Car, User as UserIcon, ListFilter, X, Calendar, ArrowRight, AlertCircle, Send, BellRing, Bike, Phone, Mail, CreditCard, ExternalLink, CalendarDays, MapPin, Hash, UserCheck, Crown, ShieldCheck, AlertTriangle } from 'lucide-react';
 
-const LiveDuration = ({ startTime }: { startTime: string }) => {
+const checkIsOverstaying = (v: Visitor): boolean => {
+  if (!v.timeIn || v.timeOut || !v.endDate) return false;
+  return new Date() > new Date(v.endDate);
+};
+
+const LiveDuration = ({ startTime, isOverstaying }: { startTime: string, isOverstaying?: boolean }) => {
   const [duration, setDuration] = useState('');
   useEffect(() => {
     const calc = () => {
@@ -26,10 +31,10 @@ const LiveDuration = ({ startTime }: { startTime: string }) => {
     const interval = setInterval(() => setDuration(calc()), 60000);
     return () => clearInterval(interval);
   }, [startTime]);
-  return <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{duration}</span>;
+  return <span className={`font-mono font-bold ${isOverstaying ? 'text-red-500 animate-pulse' : 'text-emerald-600 dark:text-emerald-400'}`}>{duration}</span>;
 }
 
-// New Component: Detailed Visitor Modal
+// Detailed Visitor Modal
 const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: { 
   visitor: Visitor | null, 
   onClose: () => void,
@@ -40,6 +45,8 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
   const [rejectionReason, setRejectionReason] = useState('');
 
   if (!visitor) return null;
+
+  const isOverstaying = checkIsOverstaying(visitor);
 
   const handleReject = () => {
     if (showRejectInput) {
@@ -87,6 +94,16 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
         {/* Detail Sections */}
         <div className="p-8 pt-4 space-y-6">
           
+          {isOverstaying && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-center gap-3 animate-pulse">
+               <AlertTriangle className="text-red-500 shrink-0" size={20} />
+               <div>
+                  <p className="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest leading-none mb-1">Duration Exceeded</p>
+                  <p className="text-xs font-bold text-red-700 dark:text-red-200">Visitor has passed scheduled checkout time.</p>
+               </div>
+            </div>
+          )}
+
           {/* Section: Origin/Registration */}
           <div className="space-y-3">
             <h3 className="text-[10px] font-black text-purple-500 uppercase tracking-widest px-1">Source Information</h3>
@@ -165,7 +182,7 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
                     </div>
                     <div>
                       <p className="text-[9px] text-slate-500 dark:text-white/30 font-bold uppercase">Expected End</p>
-                      <p className="text-xs font-bold text-slate-900 dark:text-white/80">{visitor.endDate ? formatDate(visitor.endDate) : 'Standard Duration'}</p>
+                      <p className={`text-xs font-bold ${isOverstaying ? 'text-red-500' : 'text-slate-900 dark:text-white/80'}`}>{visitor.endDate ? formatDate(visitor.endDate) : 'Standard Duration'}</p>
                     </div>
                   </div>
                </div>
@@ -292,6 +309,7 @@ export const OperatorDashboard = () => {
         transport: v.transportMode,
         entryTime: v.timeIn!,
         isVip: false,
+        isOverstaying: checkIsOverstaying(v),
         record: v
     }));
 
@@ -306,6 +324,7 @@ export const OperatorDashboard = () => {
         transport: TransportMode.CAR, // VIPs typically use cars
         entryTime: v.lastEntryTime!,
         isVip: true,
+        isOverstaying: false, // Assume VIPs are flexible for now
         record: v
     }));
 
@@ -473,11 +492,11 @@ export const OperatorDashboard = () => {
                           if (item.isVip) setSelectedVip(item.record as VipRecord);
                           else setSelectedVisitor(item.record as Visitor);
                       }}
-                      className="group relative overflow-hidden rounded-3xl border border-emerald-100 dark:border-emerald-500/20 bg-white dark:bg-[#1E1E2E] p-5 shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                      className={`group relative overflow-hidden rounded-3xl border ${item.isOverstaying ? 'border-red-500/50 bg-red-50/50 dark:bg-red-900/10 shadow-red-500/10' : 'border-emerald-100 dark:border-emerald-500/20 bg-white dark:bg-[#1E1E2E]'} p-5 shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer`}
                     >
                        <div className="flex items-start justify-between">
                           <div className="flex items-center gap-4">
-                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black ${item.isVip ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-600' : 'bg-blue-100 dark:bg-blue-500/10 text-blue-600'}`}>
+                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black ${item.isVip ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-600' : item.isOverstaying ? 'bg-red-100 dark:bg-red-500/10 text-red-600' : 'bg-blue-100 dark:bg-blue-500/10 text-blue-600'}`}>
                                 {item.isVip ? <Crown size={20} /> : <User size={20} />}
                              </div>
                              <div>
@@ -492,14 +511,19 @@ export const OperatorDashboard = () => {
                                 </div>
                              </div>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right flex flex-col items-end gap-1.5">
+                             {item.isOverstaying && (
+                               <div className="bg-red-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-lg tracking-tighter flex items-center gap-1 animate-pulse mb-0.5">
+                                  <AlertTriangle size={10} /> LIMIT EXCEEDED
+                               </div>
+                             )}
                              <div className="flex items-center justify-end gap-1.5 mb-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">IN PREMISE</span>
+                                <span className={`w-1.5 h-1.5 rounded-full ${item.isOverstaying ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></span>
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${item.isOverstaying ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{item.isOverstaying ? 'OVERSTAY' : 'IN PREMISE'}</span>
                              </div>
                              <div className="flex items-center justify-end gap-1 text-[10px] text-slate-500 dark:text-white/50">
                                 <Clock size={12} />
-                                <LiveDuration startTime={item.entryTime} />
+                                <LiveDuration startTime={item.entryTime} isOverstaying={item.isOverstaying} />
                              </div>
                           </div>
                        </div>
@@ -623,43 +647,51 @@ export const OperatorDashboard = () => {
                     </button>
                 </div>
             ) : (
-                filteredHistory.map(visitor => (
-                    <div 
-                      key={visitor.id} 
-                      onClick={() => setSelectedVisitor(visitor)}
-                      className="group animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-2 rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#151520] p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-[#1E1E2E] cursor-pointer shadow-sm"
-                    >
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-100 dark:bg-white/5 ring-1 ring-slate-200 dark:ring-white/10">
-                                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${visitor.name}`} alt="" className="h-full w-full p-1" />
-                                    <div className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-[#151520] ${visitor.status === VisitorStatus.APPROVED ? 'bg-emerald-500' : visitor.status === VisitorStatus.REJECTED ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                filteredHistory.map(visitor => {
+                    const isOverstaying = checkIsOverstaying(visitor);
+                    return (
+                        <div 
+                        key={visitor.id} 
+                        onClick={() => setSelectedVisitor(visitor)}
+                        className={`group animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-2 rounded-2xl border ${isOverstaying ? 'border-red-500/30 bg-red-50/30 dark:bg-red-900/5' : 'border-slate-200 dark:border-white/5 bg-white dark:bg-[#151520]'} p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-[#1E1E2E] cursor-pointer shadow-sm relative overflow-hidden`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-100 dark:bg-white/5 ring-1 ring-slate-200 dark:ring-white/10">
+                                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${visitor.name}`} alt="" className="h-full w-full p-1" />
+                                        <div className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-[#151520] ${visitor.status === VisitorStatus.APPROVED ? (isOverstaying ? 'bg-red-500' : 'bg-emerald-500') : visitor.status === VisitorStatus.REJECTED ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                                    </div>
+                                    <div className="overflow-hidden">
+                                        <h4 className={`truncate text-xs font-bold transition-colors group-hover:text-blue-500 dark:group-hover:text-blue-400 ${isOverstaying ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>{visitor.name}</h4>
+                                        <div className="mt-1 flex items-center gap-2">
+                                            <span className="bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-tighter text-slate-500 dark:text-white/40 rounded">
+                                                #{visitor.id}
+                                            </span>
+                                            <span className="flex items-center gap-1 text-[9px] font-medium text-slate-400 dark:text-white/30">
+                                                {visitor.transportMode === TransportMode.CAR ? <Car size={10}/> : <div className="flex items-center"><UserIcon size={10}/><Bike size={10}/></div>}
+                                                {visitor.transportMode === TransportMode.CAR ? (visitor.licensePlate || '??-????') : 'Walk-in'}
+                                                <span className="opacity-20 mx-1">|</span>
+                                                <span className="text-purple-600/60 dark:text-purple-400/60 font-bold">{visitor.registeredBy === 'SELF' ? 'Self' : visitor.registeredBy}</span>
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="overflow-hidden">
-                                    <h4 className="truncate text-xs font-bold text-slate-900 dark:text-white transition-colors group-hover:text-blue-500 dark:group-hover:text-blue-400">{visitor.name}</h4>
-                                    <div className="mt-1 flex items-center gap-2">
-                                        <span className="bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-tighter text-slate-500 dark:text-white/40 rounded">
-                                            #{visitor.id}
-                                        </span>
-                                        <span className="flex items-center gap-1 text-[9px] font-medium text-slate-400 dark:text-white/30">
-                                            {visitor.transportMode === TransportMode.CAR ? <Car size={10}/> : <div className="flex items-center"><UserIcon size={10}/><Bike size={10}/></div>}
-                                            {visitor.transportMode === TransportMode.CAR ? (visitor.licensePlate || '??-????') : 'Walk-in'}
-                                            <span className="opacity-20 mx-1">|</span>
-                                            <span className="text-purple-600/60 dark:text-purple-400/60 font-bold">{visitor.registeredBy === 'SELF' ? 'Self' : visitor.registeredBy}</span>
-                                        </span>
+                                <div className="flex shrink-0 flex-col items-end gap-2">
+                                    {isOverstaying && (
+                                        <div className="bg-red-600 text-white text-[7px] font-black uppercase px-2 py-0.5 rounded-lg tracking-widest flex items-center gap-1 animate-pulse">
+                                            <AlertTriangle size={8} /> OVERSTAY
+                                        </div>
+                                    )}
+                                    <StatusBadge status={visitor.status} />
+                                    <div className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-tighter text-slate-400 dark:text-white/20">
+                                        <Calendar size={10} />
+                                        {new Date(visitor.visitDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex shrink-0 flex-col items-end gap-2">
-                                <StatusBadge status={visitor.status} />
-                                <div className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-tighter text-slate-400 dark:text-white/20">
-                                    <Calendar size={10} />
-                                    {new Date(visitor.visitDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                </div>
-                            </div>
                         </div>
-                    </div>
-                ))
+                    );
+                })
             )}
         </div>
       </section>

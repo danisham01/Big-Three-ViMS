@@ -13,7 +13,8 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('vms_theme');
-    return (saved as Theme) || 'light';
+    // Default to dark mode instead of light
+    return (saved as Theme) || 'dark';
   });
 
   useEffect(() => {

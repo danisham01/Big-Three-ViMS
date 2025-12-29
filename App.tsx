@@ -13,7 +13,7 @@ import { LPRDetectionPage } from './pages/LPRPage';
 import { VipList, VipForm } from './pages/VipPages';
 import { ChatBot } from './components/ChatBot';
 import { VisitorType, UserRole } from './types';
-import { Shield, Users, Eye, Search, Home, LayoutDashboard, History, Settings, UserCircle, Briefcase, Ban, Scan, Crown } from 'lucide-react';
+import { Shield, Users, Eye, Search, Home, LayoutDashboard, History, Settings, UserCircle, Briefcase, Ban, Scan, Crown, Sparkles } from 'lucide-react';
 
 const Navigation = () => {
   const { currentUser } = useStore();
@@ -90,6 +90,24 @@ const Navigation = () => {
   );
 };
 
+const Footer = () => (
+  <footer className="mt-auto py-12 px-6 text-center animate-in fade-in duration-1000 slide-in-from-bottom-2">
+    <div className="flex flex-col items-center gap-4">
+      <div className="h-px w-12 bg-gradient-to-r from-transparent via-slate-300 dark:via-white/10 to-transparent"></div>
+      <p className="text-[10px] font-bold text-slate-400 dark:text-white/20 uppercase tracking-[0.3em]">
+        Developed by <span className="text-slate-600 dark:text-white/40">Danish • Luqman • Ikhwan</span>
+      </p>
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 shadow-sm transition-all hover:border-blue-500/30 group">
+         <Sparkles size={10} className="text-blue-500 group-hover:scale-125 transition-transform" />
+         <span className="text-[9px] font-black text-slate-500 dark:text-white/30 uppercase tracking-widest">Powered by Artificial Intelligence</span>
+      </div>
+      <p className="text-[8px] font-medium text-slate-400 dark:text-white/10 uppercase tracking-widest mt-2">
+        © {new Date().getFullYear()} Big Three VMS • All Rights Reserved
+      </p>
+    </div>
+  </footer>
+);
+
 const Layout = ({ children }: { children?: React.ReactNode }) => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#050508] font-sans text-slate-900 dark:text-white overflow-x-hidden transition-colors duration-500">
@@ -98,13 +116,17 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
         <div className="absolute bottom-[10%] right-[0%] w-[60%] h-[60%] rounded-full bg-indigo-200/20 dark:bg-indigo-900/10 blur-[120px]"></div>
       </div>
 
-      <main className="relative z-10 min-h-screen pb-24">
+      <main className="relative z-10 min-h-screen pb-24 flex flex-col">
         {/* Header with Theme Toggle */}
         <div className="absolute top-4 right-4 z-50">
           <ThemeToggle />
         </div>
         
-        {children}
+        <div className="flex-1">
+          {children}
+        </div>
+
+        <Footer />
       </main>
 
       <ChatBot />

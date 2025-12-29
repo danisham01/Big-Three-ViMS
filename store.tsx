@@ -41,11 +41,23 @@ const VALID_USERS = [
   { username: 'lpr', password: '1', role: UserRole.LPR_READER, fullName: 'LPR Scanning Terminal' },
 ];
 
-const determineQRType = (type: VisitorType, mode: TransportMode): QRType => {
-  if (type === VisitorType.ADHOC) {
-    return mode === TransportMode.NON_CAR ? QRType.QR1 : QRType.NONE;
+const determineQRType = (mode: TransportMode, purpose: string): QRType => {
+  const isServiceOrPublic = [
+    'E-Hailing (Driver)', 
+    'Food Services', 
+    'Courier Services', 
+    'Garbage Truck Services', 
+    'Safeguard', 
+    'Public'
+  ].includes(purpose);
+  
+  if (mode === TransportMode.CAR) {
+      if (isServiceOrPublic) return QRType.NONE;
+      return QRType.QR2; 
+  } else {
+      if (isServiceOrPublic) return QRType.QR1;
+      return QRType.QR3; 
   }
-  return mode === TransportMode.CAR ? QRType.QR2 : QRType.QR3;
 };
 
 const generateUniqueCode = (existingVisitors: Visitor[]) => {
@@ -60,22 +72,324 @@ const normalizePlate = (plate?: string) => plate?.toUpperCase().replace(/[^A-Z0-
 const normalizePhone = (phone?: string) => phone?.replace(/[^0-9+]/g, '') || '';
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [visitors, setVisitors] = useState<Visitor[]>([]);
+  // --- EXTENSIVE MOCK DATA ---
+  const now = new Date();
+  
+  const initialVisitors: Visitor[] = [
+    // --- OVERSTAY DEMO CASES ---
+    {
+      id: '99001',
+      name: 'James (Overstay Demo)',
+      contact: '+6011-9998881',
+      purpose: 'Courier Services',
+      dropOffArea: 'Loading Dock 4',
+      visitDate: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+      endDate: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),   // 1 hour ago (EXPIRED)
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.CAR,
+      licensePlate: 'VMS 101',
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.NONE,
+      timeIn: new Date(Date.now() - 3.5 * 60 * 60 * 1000).toISOString(), // Entered 3.5 hours ago
+      registeredBy: 'staff1',
+      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: '99002',
+      name: 'Sarah (Critical Overstay)',
+      contact: '+6011-7776662',
+      purpose: 'Public',
+      specifiedLocation: 'Balai Islam',
+      visitDate: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(), // 2 days ago
+      endDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),   // 1 day ago (EXPIRED)
+      type: VisitorType.ADHOC,
+      transportMode: TransportMode.NON_CAR,
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.QR1,
+      timeIn: new Date(Date.now() - 47 * 60 * 60 * 1000).toISOString(), // Entered 47 hours ago
+      registeredBy: 'SELF',
+      createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+    },
+
+    // --- STAFF INVITE CATEGORY ---
+    {
+      id: '22001',
+      name: 'Staff Invite - Food (Car - No QR)',
+      contact: '+6012-1110001',
+      purpose: 'Food Services',
+      dropOffArea: 'Lobby A',
+      visitDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.CAR,
+      licensePlate: 'ABC 1234',
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.NONE,
+      registeredBy: 'staff1',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '22002',
+      name: 'Staff Invite - Food (Walk - QR1)',
+      contact: '+6012-1110002',
+      purpose: 'Food Services',
+      dropOffArea: 'Lobby B',
+      visitDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.NON_CAR,
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.QR1,
+      registeredBy: 'staff1',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '22003',
+      name: 'Staff Invite - Courier (Car - No QR)',
+      contact: '+6012-1110003',
+      purpose: 'Courier Services',
+      dropOffArea: 'Mailroom',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.CAR,
+      licensePlate: 'BQA 8899',
+      status: VisitorStatus.REJECTED,
+      rejectionReason: 'Invalid delivery permit.',
+      qrType: QRType.NONE,
+      registeredBy: 'staff1',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '22004',
+      name: 'Staff Invite - Garbage (Car - No QR)',
+      contact: '+6012-1110004',
+      purpose: 'Garbage Truck Services',
+      dropOffArea: 'Loading Bay',
+      visitDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.CAR,
+      licensePlate: 'TRK 777',
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.NONE,
+      timeIn: new Date(Date.now() - 1800000).toISOString(),
+      registeredBy: 'staff1',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '22005',
+      name: 'Staff Invite - Safeguard (Car - No QR)',
+      contact: '+6012-1110005',
+      purpose: 'Safeguard',
+      dropOffArea: 'Vault Entrance',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.CAR,
+      licensePlate: 'SEC 001',
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.NONE,
+      registeredBy: 'staff1',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '22006',
+      name: 'Staff Invite - Public (Walk - QR1)',
+      contact: '+6012-1110006',
+      purpose: 'Public',
+      specifiedLocation: 'Balai Islam',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.NON_CAR,
+      status: VisitorStatus.PENDING,
+      qrType: QRType.QR1,
+      registeredBy: 'staff1',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '22007',
+      name: 'Staff Invite - External TNB (Car - QR2)',
+      contact: '+6012-1110007',
+      purpose: 'External TNB Staff',
+      staffNumber: 'TNB-99',
+      location: 'Substation B',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.CAR,
+      licensePlate: 'TNB 55',
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.QR2,
+      registeredBy: 'staff1',
+      createdAt: new Date().toISOString()
+    },
+
+    // --- PRE-REG (Self-Requested) CATEGORY ---
+    {
+      id: '33001',
+      name: 'Pre Reg - E-Hailing (Car - No QR)',
+      contact: '+6017-2220001',
+      purpose: 'E-Hailing (Driver)',
+      dropOffArea: 'Lobby A',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.CAR,
+      licensePlate: 'WXY 123',
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.NONE,
+      registeredBy: 'SELF',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '33002',
+      name: 'Pre Reg - Food (Walk - QR1)',
+      contact: '+6017-2220002',
+      purpose: 'Food Services',
+      dropOffArea: 'Lobby C',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.NON_CAR,
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.QR1,
+      registeredBy: 'SELF',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '33003',
+      name: 'Pre Reg - Courier (Walk - QR1)',
+      contact: '+6017-2220003',
+      purpose: 'Courier Services',
+      dropOffArea: 'Security Desk',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.NON_CAR,
+      status: VisitorStatus.REJECTED,
+      rejectionReason: 'Package delivery not allowed at this hour.',
+      qrType: QRType.QR1,
+      registeredBy: 'SELF',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '33004',
+      name: 'Pre Reg - Public (Car - No QR)',
+      contact: '+6017-2220004',
+      purpose: 'Public',
+      specifiedLocation: 'Ruang Komuniti',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.CAR,
+      licensePlate: 'VAF 4455',
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.NONE,
+      registeredBy: 'SELF',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '33005',
+      name: 'Pre Reg - Safeguard (Car - No QR)',
+      contact: '+6017-2220005',
+      purpose: 'Safeguard',
+      dropOffArea: 'Gate 4',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.CAR,
+      licensePlate: 'SGRD 9',
+      status: VisitorStatus.PENDING,
+      qrType: QRType.NONE,
+      registeredBy: 'SELF',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '33006',
+      name: 'Pre Reg - Garbage (Car - No QR)',
+      contact: '+6017-2220006',
+      purpose: 'Garbage Truck Services',
+      dropOffArea: 'Disposal Zone',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.CAR,
+      licensePlate: 'WA 8822 G',
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.NONE,
+      registeredBy: 'SELF',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '33007',
+      name: 'Pre Reg - External Staff (Walk - QR3)',
+      contact: '+6017-2220007',
+      purpose: 'External Staff',
+      staffNumber: 'S-88',
+      location: 'Floor 12',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.NON_CAR,
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.QR3,
+      registeredBy: 'SELF',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '33008',
+      name: 'Pre Reg - Public (Walk - QR1)',
+      contact: '+6017-2220008',
+      purpose: 'Public',
+      specifiedLocation: 'Taska',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.PREREGISTERED,
+      transportMode: TransportMode.NON_CAR,
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.QR1,
+      registeredBy: 'SELF',
+      createdAt: new Date().toISOString()
+    },
+
+    // --- AD HOC (Self - At Gate) ---
+    {
+      id: '11001',
+      name: 'Ad Hoc - E-Hailing (Car - No QR)',
+      contact: '+6011-3330001',
+      purpose: 'E-Hailing (Driver)',
+      dropOffArea: 'Lobby A',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.ADHOC,
+      transportMode: TransportMode.CAR,
+      licensePlate: 'PQR 5566',
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.NONE,
+      registeredBy: 'SELF',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: '11002',
+      name: 'Ad Hoc - Food (Walk - QR1)',
+      contact: '+6011-3330002',
+      purpose: 'Food Services',
+      dropOffArea: 'Security Post',
+      visitDate: new Date().toISOString(),
+      type: VisitorType.ADHOC,
+      transportMode: TransportMode.NON_CAR,
+      status: VisitorStatus.APPROVED,
+      qrType: QRType.QR1,
+      registeredBy: 'SELF',
+      createdAt: new Date().toISOString()
+    }
+  ];
+
+  const [visitors, setVisitors] = useState<Visitor[]>(initialVisitors);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [blacklist, setBlacklist] = useState<BlacklistRecord[]>([]);
   const [lprLogs, setLprLogs] = useState<LPRLog[]>([]);
-  // Mock VIP Data
+  
   const [vipRecords, setVipRecords] = useState<VipRecord[]>([
     {
       id: 'vip-001',
       vipType: VipType.VVIP,
       designation: 'Director-General',
-      name: 'Datuk Seri Ahmad',
+      name: 'Datuk Seri Ahmad VVIP',
       contact: '+60123456789',
       licensePlate: 'VIP 1',
       vehicleColor: 'Black',
       validFrom: new Date().toISOString(),
-      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       autoApprove: true,
       autoOpenGate: true,
       accessPoints: ['ENTRY_LPR', 'EXIT_LPR'],
@@ -97,13 +411,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const subject = encodeURIComponent(`[APPROVED] Digital Access Pass for TNB HQ (Ref: ${v.id})`);
     const passUrl = `${window.location.origin}/#/visitor/wallet/${v.id}`;
     
-    // Formatting the initial application date and time
     const initialApplicationDate = new Date(v.createdAt).toLocaleString('en-MY', {
       dateStyle: 'full',
       timeStyle: 'short'
     });
 
-    // Email Body Template
     const body = encodeURIComponent(`
 Hello ${v.name},
 
@@ -144,7 +456,7 @@ Big Three
   };
 
   const triggerRejectionEmailClient = (v: Visitor, reason: string) => {
-    const subject = encodeURIComponent(`[REJECTED] Update on your Visit Request - Crystal Towers (Ref: ${v.id})`);
+    const subject = encodeURIComponent(`[REJECTED] Update on your Visit Request - TNB HQ (Ref: ${v.id})`);
     
     const initialApplicationDate = new Date(v.createdAt).toLocaleString('en-MY', {
       dateStyle: 'full',
@@ -216,7 +528,6 @@ Big Three
     }
   };
 
-  // VIP Logic
   const addVip = (record: Omit<VipRecord, 'id' | 'createdAt' | 'status'>) => {
     const newVip: VipRecord = {
       ...record,
@@ -236,7 +547,6 @@ Big Three
           updatedBy: updatedBy || v.updatedBy, 
           updatedAt: new Date().toISOString() 
         };
-        // Audit log
         if (updatedBy) {
           logAccess({
             visitorId: id,
@@ -317,7 +627,6 @@ Big Three
   };
 
   const addVisitor = (data: Omit<Visitor, 'id' | 'qrType' | 'status' | 'createdAt'> & { status?: VisitorStatus }) => {
-    // Enforcement: Check Blacklist
     const blacklisted = checkBlacklist(data.icNumber, data.licensePlate, data.contact);
     if (blacklisted) {
       throw new Error(`Access Denied — Blacklisted. Reason: ${blacklisted.reason}`);
@@ -330,7 +639,7 @@ Big Three
       ...data,
       id: generateUniqueCode(visitors),
       status: status,
-      qrType: determineQRType(data.type, data.transportMode),
+      qrType: determineQRType(data.transportMode, data.purpose),
       registeredBy: data.registeredBy || 'SELF',
       createdAt: new Date().toISOString(),
     };
@@ -341,7 +650,6 @@ Big Three
   const updateVisitorStatus = (id: string, status: VisitorStatus, reason?: string) => {
     setVisitors(prev => prev.map(v => {
       if (v.id === id) {
-        // Notify Staff if applicable
         if (v.registeredBy && v.registeredBy !== 'SELF') {
           const newNotif: Notification = {
             id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -355,12 +663,10 @@ Big Three
           setNotifications(curr => [newNotif, ...curr]);
         }
 
-        // Trigger Local Email Window (Outlook) upon Approval
         if (status === VisitorStatus.APPROVED) {
            triggerLocalEmailClient(v);
         }
 
-        // Trigger Local Email Window upon Rejection
         if (status === VisitorStatus.REJECTED) {
            triggerRejectionEmailClient(v, reason || '');
         }
