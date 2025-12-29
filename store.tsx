@@ -1,6 +1,7 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { collection, deleteDoc, doc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { Visitor, AccessLog, VisitorType, TransportMode, VisitorStatus, QRType, User, UserRole, Notification, BlacklistRecord, LPRLog, VipRecord, VipType } from './types';
+import { db } from './firebase';
 
 interface StoreContextType {
   visitors: Visitor[];
@@ -70,9 +71,9 @@ const generateUniqueCode = (existingVisitors: Visitor[]) => {
 
 const normalizePlate = (plate?: string) => plate?.toUpperCase().replace(/[^A-Z0-9]/g, '') || '';
 const normalizePhone = (phone?: string) => phone?.replace(/[^0-9+]/g, '') || '';
+const toFirestore = <T,>(data: T): T => JSON.parse(JSON.stringify(data));
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // --- EXTENSIVE MOCK DATA ---
   const now = new Date();
   
   const initialVisitors: Visitor[] = [
@@ -407,6 +408,121 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   const [logs, setLogs] = useState<AccessLog[]>([]);
 
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const [visSnap, logSnap, notifSnap, blSnap, vipSnap, lprSnap] = await Promise.all([
+          getDocs(collection(db, 'visitors')),
+          getDocs(collection(db, 'logs')),
+          getDocs(collection(db, 'notifications')),
+          getDocs(collection(db, 'blacklist')),
+          getDocs(collection(db, 'vipRecords')),
+          getDocs(collection(db, 'lprLogs')),
+        ]);
+
+        const loadedVisitors = visSnap.docs.map(d => d.data() as Visitor);
+        const loadedLogs = logSnap.docs.map(d => d.data() as AccessLog);
+        const loadedNotifs = notifSnap.docs.map(d => d.data() as Notification);
+        const loadedBlacklist = blSnap.docs.map(d => d.data() as BlacklistRecord);
+        const loadedVip = vipSnap.docs.map(d => d.data() as VipRecord);
+        const loadedLpr = lprSnap.docs.map(d => d.data() as LPRLog);
+
+        setVisitors(loadedVisitors.length ? loadedVisitors : initialVisitors);
+        if (loadedLogs.length) setLogs(loadedLogs);
+        if (loadedNotifs.length) setNotifications(loadedNotifs);
+        if (loadedBlacklist.length) setBlacklist(loadedBlacklist);
+        if (loadedVip.length) setVipRecords(loadedVip);
+        if (loadedLpr.length) setLprLogs(loadedLpr);
+      } catch (error) {
+        console.warn('Firestore load failed, falling back to local data.', error);
+        setVisitors(initialVisitors);
+      }
+    };
+
+    fetchAll();
+  }, []);
+
+  const persistVisitor = async (visitor: Visitor) => {
+    try {
+      await setDoc(doc(db, 'visitors', visitor.id), toFirestore(visitor));
+    } catch (error) {
+      console.warn('Failed to save visitor to Firestore', error);
+    }
+  };
+
+  const patchVisitor = async (id: string, updates: Partial<Visitor>) => {
+    try {
+      await updateDoc(doc(db, 'visitors', id), toFirestore(updates));
+    } catch (error) {
+      console.warn('Failed to update visitor in Firestore', error);
+    }
+  };
+
+  const persistLog = async (log: AccessLog) => {
+    try {
+      await setDoc(doc(db, 'logs', log.id), toFirestore(log));
+    } catch (error) {
+      console.warn('Failed to save log to Firestore', error);
+    }
+  };
+
+  const persistNotification = async (notification: Notification) => {
+    try {
+      await setDoc(doc(db, 'notifications', notification.id), toFirestore(notification));
+    } catch (error) {
+      console.warn('Failed to save notification to Firestore', error);
+    }
+  };
+
+  const persistBlacklist = async (record: BlacklistRecord) => {
+    try {
+      await setDoc(doc(db, 'blacklist', record.id), toFirestore(record));
+    } catch (error) {
+      console.warn('Failed to save blacklist record to Firestore', error);
+    }
+  };
+
+  const patchBlacklist = async (id: string, updates: Partial<BlacklistRecord>) => {
+    try {
+      await updateDoc(doc(db, 'blacklist', id), toFirestore(updates));
+    } catch (error) {
+      console.warn('Failed to update blacklist record in Firestore', error);
+    }
+  };
+
+  const persistVip = async (record: VipRecord) => {
+    try {
+      await setDoc(doc(db, 'vipRecords', record.id), toFirestore(record));
+    } catch (error) {
+      console.warn('Failed to save VIP record to Firestore', error);
+    }
+  };
+
+  const patchVip = async (id: string, updates: Partial<VipRecord>) => {
+    try {
+      await updateDoc(doc(db, 'vipRecords', id), toFirestore(updates));
+    } catch (error) {
+      console.warn('Failed to update VIP record in Firestore', error);
+    }
+  };
+
+  const persistLprLog = async (log: LPRLog) => {
+    try {
+      await setDoc(doc(db, 'lprLogs', log.id), toFirestore(log));
+    } catch (error) {
+      console.warn('Failed to save LPR log to Firestore', error);
+    }
+  };
+
+  const clearCollection = async (name: string) => {
+    try {
+      const snap = await getDocs(collection(db, name));
+      await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+    } catch (error) {
+      console.warn(`Failed to clear collection ${name}`, error);
+    }
+  };
+
   const triggerLocalEmailClient = (v: Visitor) => {
     const subject = encodeURIComponent(`[APPROVED] Digital Access Pass for TNB HQ (Ref: ${v.id})`);
     const passUrl = `${window.location.origin}/#/visitor/wallet/${v.id}`;
@@ -427,20 +543,17 @@ Visitor ID: ${v.id}
 Status: AUTHORIZED
 ----------------------------
 
-🔑 YOUR DIGITAL QR IMAGE
-Please click the link below to view and save your unique entry QR code. You must show this image to the security guards or scan it at the automated lobby gates for entry:
+QR CODE LINK: ${passUrl}
 
-👉 VIEW QR CODE: ${passUrl}
-
-📍 LOCATION & DIRECTIONS
+LOCATION & DIRECTIONS
 Address: Tenaga Nasional Berhad, TNB Platinum, 50000 Kuala Lumpur.
 Google Maps: https://maps.google.com/?q=TNB+Platinum+HQ
 
-🅿️ PARKING & ENTRY INSTRUCTIONS
+PARKING & ENTRY INSTRUCTIONS
 - Vehicles: Use the left lane at the Main Gate. The LPR system will scan your plate ${v.licensePlate || 'N/A'}.
 - Pedestrians: Proceed to Guard House and scan your QR at the speed gates.
 
-⚠️ DO'S & DONT'S
+DO'S & DON'TS
 - [DO] Keep your digital pass with you at all times.
 - [DO] Check in with your host immediately upon arrival.
 - [DON'T] Take photographs in server zones.
@@ -474,9 +587,8 @@ Visitor ID: ${v.id}
 Current Status: DECLINED / REJECTED
 ----------------------------
 
-❌ REASON FOR REJECTION
-The security department provided the following reason for this decision:
-"${reason || 'No specific reason provided.'}"
+REASON FOR REJECTION
+${reason || 'No specific reason provided.'}
 
 WHAT SHOULD YOU DO NOW?
 If you believe this rejection is an error or if you wish to appeal this decision, please contact your host directly or reach out to our security helpdesk at +603-1111-1111.
@@ -512,19 +624,30 @@ Big Three
       timestamp: new Date().toISOString(),
     };
     setLogs(prev => [newLog, ...prev]);
+    void persistLog(newLog);
 
     if (logData.action === 'ENTRY' || logData.action === 'EXIT') {
+        let updatedVisitor: Visitor | null = null;
         setVisitors(prev => prev.map(v => {
             if (v.id === logData.visitorId) {
                 if (logData.action === 'ENTRY' && !v.timeIn) {
-                    return { ...v, timeIn: new Date().toISOString() };
+                    updatedVisitor = { ...v, timeIn: new Date().toISOString() };
+                    return updatedVisitor;
                 }
                 if (logData.action === 'EXIT') {
-                    return { ...v, timeOut: new Date().toISOString() };
+                    updatedVisitor = { ...v, timeOut: new Date().toISOString() };
+                    return updatedVisitor;
                 }
             }
             return v;
         }));
+
+        if (updatedVisitor) {
+          void patchVisitor(updatedVisitor.id, {
+            timeIn: updatedVisitor.timeIn,
+            timeOut: updatedVisitor.timeOut
+          });
+        }
     }
   };
 
@@ -536,6 +659,7 @@ Big Three
       status: 'ACTIVE'
     };
     setVipRecords(prev => [newVip, ...prev]);
+    void persistVip(newVip);
   };
 
   const updateVip = (id: string, updates: Partial<VipRecord>, updatedBy?: string) => {
@@ -557,6 +681,11 @@ Big Three
             details: `VIP updated by ${updatedBy}`
           });
         }
+        void patchVip(updatedRecord.id, {
+          ...updates,
+          updatedBy: updatedRecord.updatedBy,
+          updatedAt: updatedRecord.updatedAt
+        });
         return updatedRecord;
       }
       return v;
@@ -567,8 +696,10 @@ Big Three
     setVipRecords(prev => prev.map(v => {
       if (v.id === id) {
         if (mode === 'ENTRY') {
+          void patchVip(id, { lastEntryTime: timestamp });
           return { ...v, lastEntryTime: timestamp };
         } else {
+          void patchVip(id, { lastExitTime: timestamp });
           return { ...v, lastExitTime: timestamp };
         }
       }
@@ -603,10 +734,22 @@ Big Three
       status: 'ACTIVE',
     };
     setBlacklist(prev => [newRecord, ...prev]);
+    void persistBlacklist(newRecord);
   };
 
   const removeFromBlacklist = (id: string) => {
-    setBlacklist(prev => prev.map(r => r.id === id ? { ...r, status: 'UNBANNED' } : r));
+    let updatedRecord: BlacklistRecord | null = null;
+    setBlacklist(prev => prev.map(r => {
+      if (r.id === id) {
+        updatedRecord = { ...r, status: 'UNBANNED' };
+        return updatedRecord;
+      }
+      return r;
+    }));
+
+    if (updatedRecord) {
+      void patchBlacklist(updatedRecord.id, { status: updatedRecord.status });
+    }
   };
 
   const login = async (username: string, pass: string): Promise<boolean> => {
@@ -629,7 +772,7 @@ Big Three
   const addVisitor = (data: Omit<Visitor, 'id' | 'qrType' | 'status' | 'createdAt'> & { status?: VisitorStatus }) => {
     const blacklisted = checkBlacklist(data.icNumber, data.licensePlate, data.contact);
     if (blacklisted) {
-      throw new Error(`Access Denied — Blacklisted. Reason: ${blacklisted.reason}`);
+      throw new Error(`Access Denied \u2014 Blacklisted. Reason: ${blacklisted.reason}`);
     }
 
     const isAdhoc = data.type === VisitorType.ADHOC;
@@ -644,10 +787,12 @@ Big Three
       createdAt: new Date().toISOString(),
     };
     setVisitors(prev => [newVisitor, ...prev]);
+    void persistVisitor(newVisitor);
     return newVisitor;
   };
 
   const updateVisitorStatus = (id: string, status: VisitorStatus, reason?: string) => {
+    let updatedVisitor: Visitor | null = null;
     setVisitors(prev => prev.map(v => {
       if (v.id === id) {
         if (v.registeredBy && v.registeredBy !== 'SELF') {
@@ -661,6 +806,7 @@ Big Three
             timestamp: new Date().toISOString()
           };
           setNotifications(curr => [newNotif, ...curr]);
+          void persistNotification(newNotif);
         }
 
         if (status === VisitorStatus.APPROVED) {
@@ -671,20 +817,48 @@ Big Three
            triggerRejectionEmailClient(v, reason || '');
         }
 
-        return { ...v, status, rejectionReason: reason };
+        updatedVisitor = { ...v, status, rejectionReason: reason };
+        return updatedVisitor;
       }
       return v;
     }));
+
+    if (updatedVisitor) {
+      void patchVisitor(updatedVisitor.id, {
+        status: updatedVisitor.status,
+        rejectionReason: updatedVisitor.rejectionReason
+      });
+    }
   };
 
   const updateVisitor = (id: string, updates: Partial<Visitor>) => {
-    setVisitors(prev => prev.map(v => 
-      v.id === id ? { ...v, ...updates } : v
-    ));
+    let updatedVisitor: Visitor | null = null;
+    setVisitors(prev => prev.map(v => {
+      if (v.id === id) {
+        updatedVisitor = { ...v, ...updates };
+        return updatedVisitor;
+      }
+      return v;
+    }));
+
+    if (updatedVisitor) {
+      void patchVisitor(updatedVisitor.id, updates);
+    }
   };
 
   const markNotificationRead = (id: string) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    let updated: Notification | null = null;
+    setNotifications(prev => prev.map(n => {
+      if (n.id === id) {
+        updated = { ...n, read: true };
+        return updated;
+      }
+      return n;
+    }));
+
+    if (updated) {
+      void persistNotification(updated);
+    }
   };
 
   const addLPRLog = (logData: Omit<LPRLog, 'id' | 'timestamp'>) => {
@@ -694,9 +868,13 @@ Big Three
       timestamp: new Date().toISOString(),
     };
     setLprLogs(prev => [newLog, ...prev]);
+    void persistLprLog(newLog);
   };
 
-  const clearLPRLogs = () => setLprLogs([]);
+  const clearLPRLogs = () => {
+    setLprLogs([]);
+    void clearCollection('lprLogs');
+  };
 
   const getVisitorByCode = (code: string) => visitors.find(v => v.id === code);
   const getVisitorByPlate = (plate: string) => visitors.find(v => normalizePlate(v.licensePlate) === normalizePlate(plate));
