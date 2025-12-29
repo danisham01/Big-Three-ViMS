@@ -5,6 +5,7 @@ import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, StatusBadge, LoadingOverlay, Toast } from '../components/GlassComponents';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
 import { Logo } from '../components/Logo';
+import { HelpModal } from '../components/HelpModal';
 import { VisitorType, TransportMode, VisitorStatus, QRType, UserRole } from '../types';
 import { User, Car, Check, AlertCircle, RefreshCw, Share2, Download, Copy, Building2, ChevronRight, ArrowLeft, HelpCircle, Phone, FileText, Briefcase, Calendar, Clock, X, Search, ShieldCheck, Mail, Camera, Image as ImageIcon, CreditCard, Bike, MapPin, Hash, FileUp, Upload, Ban, Scan, RotateCcw } from 'lucide-react';
 import { StaffDashboard } from './StaffPages';
@@ -161,6 +162,7 @@ const CameraModal = ({ onCapture, onClose }: { onCapture: (dataUrl: string) => v
 export const VisitorLanding = () => {
   const navigate = useNavigate();
   const { currentUser } = useStore();
+  const [showHelp, setShowHelp] = useState(false);
 
   // If user is logged in, show their specific "Tools" dashboard as the home page
   if (currentUser) {
@@ -174,6 +176,18 @@ export const VisitorLanding = () => {
 
   return (
     <div className="flex flex-col min-h-screen pt-12 px-6 max-w-md mx-auto relative">
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      
+      {/* Help Icon Header for Landing */}
+      <div className="flex justify-end absolute top-6 right-6 z-20">
+        <button 
+          onClick={() => setShowHelp(true)}
+          className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors shadow-lg"
+        >
+          <HelpCircle size={20} />
+        </button>
+      </div>
+
       <div className="flex flex-col items-center justify-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
         <Logo size="xl" className="mb-6" />
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 text-center">Welcome to ViMS</h1>
@@ -228,6 +242,7 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
   const { addVisitor, checkBlacklist } = useStore();
   const [loading, setLoading] = useState(false);
   const [blacklistError, setBlacklistError] = useState<string | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
   
   // Specific refs for inputs
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -388,6 +403,7 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
 
   return (
     <div className="max-w-md mx-auto pt-6 px-4 pb-20">
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
       {loading && <LoadingOverlay message="Creating your digital pass..." />}
       {showCamera && (
         <CameraModal 
@@ -401,7 +417,10 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
             <ArrowLeft size={20} />
         </button>
         <h2 className="text-xs font-bold tracking-widest text-slate-400 dark:text-white/50 uppercase">Visitor Access</h2>
-        <button className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white">
+        <button 
+          onClick={() => setShowHelp(true)}
+          className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+        >
             <HelpCircle size={20} />
         </button>
       </div>
@@ -654,7 +673,7 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                         className="hidden"
                         onChange={e => handleFileChange(e, 'supportingDocument')}
                       />
-                      {errors.supportingDocument && <p className="mt-1 ml-1 text-[10px] text-red-500 dark:text-red-400 font-medium">{errors.supportingDocument}</p>}
+                      {errors.supportingDocument && <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium">{errors.supportingDocument}</p>}
                     </div>
                   </div>
                 )}
@@ -717,6 +736,7 @@ export const VisitorStatusCheck = () => {
     const [code, setCode] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
 
     const handleCheck = (e: React.FormEvent) => {
         // FIXED: Corrected event method call to e.preventDefault()
@@ -742,12 +762,18 @@ export const VisitorStatusCheck = () => {
 
     return (
         <div className="max-w-md mx-auto pt-12 px-6">
+            <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
             <div className="flex items-center justify-between mb-8">
                 <button onClick={() => navigate('/visitor')} className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
                     <ArrowLeft size={20} />
                 </button>
                 <h2 className="text-xs font-bold tracking-widest text-slate-400 dark:text-white/50 uppercase">Check Status</h2>
-                <div className="w-10"></div>
+                <button 
+                  onClick={() => setShowHelp(true)}
+                  className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                >
+                    <HelpCircle size={20} />
+                </button>
             </div>
 
             <div className="text-center mb-8">
@@ -761,7 +787,7 @@ export const VisitorStatusCheck = () => {
             <GlassCard className="!p-6">
                 <form onSubmit={handleCheck}>
                     <Input 
-                        placeholder="Enter 5-digit Code" 
+                        placeholder="00000" 
                         value={code} 
                         onChange={(e) => setCode(e.target.value)}
                         className="text-center text-2xl tracking-[0.5em] font-mono font-bold"
@@ -779,127 +805,102 @@ export const VisitorStatusCheck = () => {
     );
 };
 
+// NEW: VisitorWallet component to display the digital pass
 export const VisitorWallet = () => {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const { getVisitorByCode } = useStore();
-    const [downloading, setDownloading] = useState(false);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { getVisitorByCode } = useStore();
+  const [showHelp, setShowHelp] = useState(false);
 
-    const visitor = getVisitorByCode(id || '');
+  const visitor = getVisitorByCode(id || '');
 
-    if (!visitor) {
-        return (
-            // FIXED: Corrected className syntax from (flex... to className="flex...
-            <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
-                <div className="w-16 h-16 bg-red-100 dark:bg-red-500/10 rounded-full flex items-center justify-center text-red-500 mb-4">
-                    <AlertCircle size={32} />
-                </div>
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Visitor Not Found</h2>
-                <p className="text-slate-500 dark:text-white/50 text-sm mb-6">The requested visitor pass does not exist or has expired.</p>
-                <Button onClick={() => navigate('/visitor')}>Back to Home</Button>
-            </div>
-        );
-    }
-
-    const handleDownload = () => {
-        setDownloading(true);
-        // Logic to download/save pass
-        setTimeout(() => {
-            setDownloading(false);
-            alert("Pass saved to gallery (simulated)");
-        }, 1500);
-    };
-
+  if (!visitor) {
     return (
-        <div className="max-w-md mx-auto pt-6 px-4 pb-24">
-            <div className="flex items-center justify-between mb-6">
-                <button onClick={() => navigate('/visitor')} className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-                    <ArrowLeft size={20} />
-                </button>
-                <h2 className="text-xs font-bold tracking-widest text-slate-400 dark:text-white/50 uppercase">Digital Pass</h2>
-                <button onClick={handleDownload} disabled={downloading} className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
-                    {downloading ? <RefreshCw className="animate-spin" size={20} /> : <Download size={20} />}
-                </button>
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-500/10 rounded-full flex items-center justify-center text-red-500 mb-4">
+          <AlertCircle size={32} />
+        </div>
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Pass Not Found</h2>
+        <p className="text-slate-500 dark:text-white/50 text-sm mb-6">The digital pass could not be retrieved. Please check the ID or contact support.</p>
+        <Button onClick={() => navigate('/visitor')}>Back to Home</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-md mx-auto pt-12 px-6 pb-24">
+      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      <div className="flex items-center justify-between mb-8">
+        <button onClick={() => navigate('/visitor')} className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white transition-colors">
+          <ArrowLeft size={20} />
+        </button>
+        <h2 className="text-xs font-bold tracking-widest text-slate-400 dark:text-white/50 uppercase">Digital Access Pass</h2>
+        <button 
+          onClick={() => setShowHelp(true)}
+          className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white transition-colors"
+        >
+          <HelpCircle size={20} />
+        </button>
+      </div>
+
+      <div className="text-center mb-8">
+        <div className="w-20 h-20 bg-blue-100 dark:bg-blue-600/10 rounded-[2rem] flex items-center justify-center text-blue-600 dark:text-blue-500 mx-auto mb-4 border border-blue-200 dark:border-blue-500/20 shadow-xl">
+           <ShieldCheck size={40} />
+        </div>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{visitor.name}</h1>
+        <div className="flex items-center justify-center gap-2">
+          <StatusBadge status={visitor.status} />
+          <span className="text-[10px] font-black text-slate-400 dark:text-white/20 uppercase tracking-[0.2em]">ID: {visitor.id}</span>
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center gap-8">
+        <QRCodeDisplay value={visitor.id} type={visitor.qrType} label="Present at Building Entry" />
+
+        <GlassCard className="w-full !p-6 !bg-white/60 dark:!bg-[#1E1E2E]/60 backdrop-blur-2xl">
+          <div className="space-y-6">
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center text-blue-500 dark:text-blue-400 shadow-sm"><Calendar size={20} /></div>
+              <div>
+                <p className="text-[10px] text-slate-500 dark:text-white/40 font-black uppercase tracking-widest mb-1">Visit Date</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">
+                  {new Date(visitor.visitDate).toLocaleDateString(undefined, { dateStyle: 'full' })}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center text-emerald-500 dark:text-emerald-400 shadow-sm"><Clock size={20} /></div>
+              <div>
+                <p className="text-[10px] text-slate-500 dark:text-white/40 font-black uppercase tracking-widest mb-1">Access Window</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white">
+                  {new Date(visitor.visitDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
+                  {visitor.endDate ? ` — ${new Date(visitor.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ' (Full Day Access)'}
+                </p>
+              </div>
             </div>
 
-            <GlassCard className="relative overflow-hidden !p-0 mb-6">
-                {/* Header Background */}
-                <div className={`h-32 ${visitor.status === VisitorStatus.APPROVED ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : visitor.status === VisitorStatus.REJECTED ? 'bg-gradient-to-r from-red-500 to-pink-600' : 'bg-gradient-to-r from-blue-500 to-indigo-600'} relative`}>
-                    <div className="absolute inset-0 bg-black/10"></div>
-                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
-                        <div className="w-24 h-24 rounded-2xl bg-white dark:bg-[#1E1E2E] p-1 shadow-xl">
-                            <img 
-                                src={visitor.icPhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${visitor.name}`} 
-                                alt="Profile" 
-                                className="w-full h-full object-cover rounded-xl bg-slate-100 dark:bg-white/5" 
-                            />
-                        </div>
-                    </div>
+            {visitor.transportMode === TransportMode.CAR && visitor.licensePlate && (
+              <div className="flex items-start gap-4">
+                <div className="w-11 h-11 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center text-indigo-500 dark:text-indigo-400 shadow-sm"><Car size={20} /></div>
+                <div>
+                  <p className="text-[10px] text-slate-500 dark:text-white/40 font-black uppercase tracking-widest mb-1">Registered Vehicle</p>
+                  <p className="text-sm font-black text-slate-900 dark:text-white uppercase font-mono tracking-wider">{visitor.licensePlate}</p>
                 </div>
-
-                <div className="pt-14 pb-8 px-6 text-center">
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{visitor.name}</h1>
-                    <div className="flex justify-center gap-2 mb-4">
-                        <StatusBadge status={visitor.status} />
-                        <span className="bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-white/50 border border-slate-200 dark:border-white/5">
-                            {visitor.type}
-                        </span>
-                    </div>
-
-                    {visitor.status === VisitorStatus.APPROVED && visitor.qrType !== QRType.NONE && (
-                        <div className="my-6">
-                            <QRCodeDisplay value={visitor.id} type={visitor.qrType} label="SCAN FOR ENTRY" />
-                        </div>
-                    )}
-                    
-                    {visitor.status === VisitorStatus.APPROVED && visitor.qrType === QRType.NONE && (
-                        <div className="my-6 p-6 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/5">
-                            <Car size={32} className="mx-auto text-slate-400 mb-2"/>
-                            <p className="text-xs font-bold text-slate-500 dark:text-white/60 uppercase tracking-widest">LPR Access Only</p>
-                            <p className="text-2xl font-black text-slate-900 dark:text-white mt-2 font-mono">{visitor.licensePlate}</p>
-                        </div>
-                    )}
-
-                    {visitor.status === VisitorStatus.PENDING && (
-                         <div className="my-6 p-6 bg-blue-50 dark:bg-blue-500/5 rounded-2xl border border-blue-100 dark:border-blue-500/10">
-                            <Clock size={32} className="mx-auto text-blue-400 mb-2"/>
-                            <p className="text-sm font-bold text-blue-600 dark:text-blue-400">Application Under Review</p>
-                            <p className="text-xs text-blue-600/60 dark:text-blue-400/60 mt-1">Please wait for admin approval.</p>
-                        </div>
-                    )}
-
-                    {visitor.status === VisitorStatus.REJECTED && (
-                         <div className="my-6 p-6 bg-red-50 dark:bg-red-500/5 rounded-2xl border border-red-100 dark:border-red-500/10">
-                            <Ban size={32} className="mx-auto text-red-400 mb-2"/>
-                            <p className="text-sm font-bold text-red-600 dark:text-red-400">Access Denied</p>
-                            <p className="text-xs text-red-600/60 dark:text-red-400/60 mt-1">{visitor.rejectionReason || 'Your application was rejected.'}</p>
-                        </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4 text-left mt-6">
-                        <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-xl border border-slate-200 dark:border-white/5">
-                            <p className="text-[9px] text-slate-400 dark:text-white/30 font-bold uppercase tracking-widest mb-1">Pass ID</p>
-                            <p className="text-sm font-bold text-slate-900 dark:text-white font-mono">{visitor.id}</p>
-                        </div>
-                         <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-xl border border-slate-200 dark:border-white/5">
-                            <p className="text-[9px] text-slate-400 dark:text-white/30 font-bold uppercase tracking-widest mb-1">Purpose</p>
-                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{visitor.purpose}</p>
-                        </div>
-                         <div className="bg-slate-50 dark:bg-white/5 p-3 rounded-xl border border-slate-200 dark:border-white/5 col-span-2">
-                            <p className="text-[9px] text-slate-400 dark:text-white/30 font-bold uppercase tracking-widest mb-1">Validity</p>
-                            <div className="flex justify-between items-center">
-                                <p className="text-xs font-bold text-slate-900 dark:text-white">{new Date(visitor.visitDate).toLocaleDateString()}</p>
-                                <span className="text-slate-300 dark:text-white/20">&rarr;</span>
-                                <p className="text-xs font-bold text-slate-900 dark:text-white">{visitor.endDate ? new Date(visitor.endDate).toLocaleDateString() : 'N/A'}</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </GlassCard>
-            
-            <p className="text-center text-[10px] text-slate-400 dark:text-white/30 font-medium max-w-xs mx-auto">
-                Please present this pass at the security checkpoint. For assistance, contact reception.
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-8 pt-6 border-t border-slate-200 dark:border-white/5">
+            <Button variant="primary" className="w-full shadow-blue-500/20 shadow-xl" onClick={() => window.print()}>
+               <Download size={18} /> Download Pass
+            </Button>
+            <p className="text-[9px] text-center text-slate-400 dark:text-white/20 mt-4 uppercase font-bold tracking-widest">
+              Please have this QR ready for scanning
             </p>
-        </div>
-    );
+          </div>
+        </GlassCard>
+      </div>
+    </div>
+  );
 };
