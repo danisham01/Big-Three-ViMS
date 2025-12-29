@@ -335,8 +335,12 @@ export const OperatorDashboard = () => {
     setProcessingId(null);
     setSelectedVisitor(null);
 
-    if (visitor && visitor.registeredBy && visitor.registeredBy !== 'SELF') {
-      setToast({ show: true, message: `Notification sent to staff (${visitor.registeredBy})` });
+    if (status === VisitorStatus.APPROVED && visitor) {
+      const channelText = visitor.email ? 'Email, WhatsApp & SMS' : 'WhatsApp & SMS';
+      setToast({ 
+        show: true, 
+        message: `Approved! QR Pass sent to guest via ${channelText}.` 
+      });
     } else {
       setToast({ show: true, message: `Visitor ${status.toLowerCase()}` });
     }

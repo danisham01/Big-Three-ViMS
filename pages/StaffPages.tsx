@@ -84,7 +84,7 @@ export const StaffLogin = () => {
         <div className="w-16 h-16 bg-white dark:bg-[#1E1E2E] rounded-2xl flex items-center justify-center border border-slate-200 dark:border-white/10 shadow-2xl mb-4 mx-auto">
              <Shield className="text-blue-500" size={32} />
         </div>
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Staff Portal</h1>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Staff Login</h1>
         <p className="text-slate-500 dark:text-white/40 text-sm">
             Authenticate to manage guests, approvals, and security protocols.
         </p>

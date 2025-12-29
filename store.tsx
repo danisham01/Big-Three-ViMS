@@ -10,7 +10,7 @@ interface StoreContextType {
   vipRecords: VipRecord[];
   lprLogs: LPRLog[];
   currentUser: User | null;
-  addVisitor: (visitor: Omit<Visitor, 'id' | 'qrType' | 'status'> & { status?: VisitorStatus }) => Visitor;
+  addVisitor: (visitor: Omit<Visitor, 'id' | 'qrType' | 'status' | 'createdAt'> & { status?: VisitorStatus }) => Visitor;
   updateVisitorStatus: (id: string, status: VisitorStatus, reason?: string) => void;
   updateVisitor: (id: string, updates: Partial<Visitor>) => void;
   logAccess: (log: Omit<AccessLog, 'id' | 'timestamp'>) => void;
@@ -92,6 +92,91 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
   
   const [logs, setLogs] = useState<AccessLog[]>([]);
+
+  const triggerLocalEmailClient = (v: Visitor) => {
+    const subject = encodeURIComponent(`[APPROVED] Digital Access Pass for TNB HQ (Ref: ${v.id})`);
+    const passUrl = `${window.location.origin}/#/visitor/wallet/${v.id}`;
+    
+    // Formatting the initial application date and time
+    const initialApplicationDate = new Date(v.createdAt).toLocaleString('en-MY', {
+      dateStyle: 'full',
+      timeStyle: 'short'
+    });
+
+    // Email Body Template
+    const body = encodeURIComponent(`
+Hello ${v.name},
+
+Your visit request has been APPROVED. Please find your access details below.
+
+--- REGISTRATION SUMMARY ---
+Initially Applied On: ${initialApplicationDate}
+Visitor ID: ${v.id}
+Status: AUTHORIZED
+----------------------------
+
+🔑 YOUR DIGITAL QR IMAGE
+Please click the link below to view and save your unique entry QR code. You must show this image to the security guards or scan it at the automated lobby gates for entry:
+
+👉 VIEW QR CODE: ${passUrl}
+
+📍 LOCATION & DIRECTIONS
+Address: Tenaga Nasional Berhad, TNB Platinum, 50000 Kuala Lumpur.
+Google Maps: https://maps.google.com/?q=TNB+Platinum+HQ
+
+🅿️ PARKING & ENTRY INSTRUCTIONS
+- Vehicles: Use the left lane at the Main Gate. The LPR system will scan your plate ${v.licensePlate || 'N/A'}.
+- Pedestrians: Proceed to Guard House and scan your QR at the speed gates.
+
+⚠️ DO'S & DONT'S
+- [DO] Keep your digital pass with you at all times.
+- [DO] Check in with your host immediately upon arrival.
+- [DON'T] Take photographs in server zones.
+- [DON'T] Smoke within the premises.
+
+We look forward to welcoming you!
+
+Best regards,
+Big Three
+    `.trim());
+
+    window.location.href = `mailto:${v.email || ''}?subject=${subject}&body=${body}`;
+  };
+
+  const triggerRejectionEmailClient = (v: Visitor, reason: string) => {
+    const subject = encodeURIComponent(`[REJECTED] Update on your Visit Request - Crystal Towers (Ref: ${v.id})`);
+    
+    const initialApplicationDate = new Date(v.createdAt).toLocaleString('en-MY', {
+      dateStyle: 'full',
+      timeStyle: 'short'
+    });
+
+    const body = encodeURIComponent(`
+Hello ${v.name},
+
+This is an automated notification regarding your recent visit request for TNB HQ.
+
+--- REGISTRATION SUMMARY ---
+Initially Applied On: ${initialApplicationDate}
+Visitor ID: ${v.id}
+Current Status: DECLINED / REJECTED
+----------------------------
+
+❌ REASON FOR REJECTION
+The security department provided the following reason for this decision:
+"${reason || 'No specific reason provided.'}"
+
+WHAT SHOULD YOU DO NOW?
+If you believe this rejection is an error or if you wish to appeal this decision, please contact your host directly or reach out to our security helpdesk at +603-1111-1111.
+
+Please do not attempt to enter the premises without a valid digital pass, as access will be denied at all checkpoints.
+
+Best regards,
+Big Three
+    `.trim());
+
+    window.location.href = `mailto:${v.email || ''}?subject=${subject}&body=${body}`;
+  };
 
   const checkBlacklist = (ic?: string, plate?: string, phone?: string) => {
     const normPlate = normalizePlate(plate);
@@ -231,7 +316,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.removeItem('vms_session');
   };
 
-  const addVisitor = (data: Omit<Visitor, 'id' | 'qrType' | 'status'> & { status?: VisitorStatus }) => {
+  const addVisitor = (data: Omit<Visitor, 'id' | 'qrType' | 'status' | 'createdAt'> & { status?: VisitorStatus }) => {
     // Enforcement: Check Blacklist
     const blacklisted = checkBlacklist(data.icNumber, data.licensePlate, data.contact);
     if (blacklisted) {
@@ -247,6 +332,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       status: status,
       qrType: determineQRType(data.type, data.transportMode),
       registeredBy: data.registeredBy || 'SELF',
+      createdAt: new Date().toISOString(),
     };
     setVisitors(prev => [newVisitor, ...prev]);
     return newVisitor;
@@ -255,6 +341,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updateVisitorStatus = (id: string, status: VisitorStatus, reason?: string) => {
     setVisitors(prev => prev.map(v => {
       if (v.id === id) {
+        // Notify Staff if applicable
         if (v.registeredBy && v.registeredBy !== 'SELF') {
           const newNotif: Notification = {
             id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -267,6 +354,17 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           };
           setNotifications(curr => [newNotif, ...curr]);
         }
+
+        // Trigger Local Email Window (Outlook) upon Approval
+        if (status === VisitorStatus.APPROVED) {
+           triggerLocalEmailClient(v);
+        }
+
+        // Trigger Local Email Window upon Rejection
+        if (status === VisitorStatus.REJECTED) {
+           triggerRejectionEmailClient(v, reason || '');
+        }
+
         return { ...v, status, rejectionReason: reason };
       }
       return v;

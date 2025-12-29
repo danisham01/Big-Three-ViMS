@@ -140,6 +140,7 @@ export interface Visitor {
   timeIn?: string;
   timeOut?: string;
   registeredBy?: string; // Stores 'SELF' or the staff username
+  createdAt: string; // Application timestamp
 }
 
 export interface Notification {

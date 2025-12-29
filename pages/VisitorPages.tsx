@@ -1,11 +1,11 @@
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, StatusBadge, LoadingOverlay, Toast } from '../components/GlassComponents';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
 import { VisitorType, TransportMode, VisitorStatus, QRType, UserRole } from '../types';
-import { User, Car, Check, AlertCircle, RefreshCw, Share2, Download, Copy, Building2, ChevronRight, ArrowLeft, HelpCircle, Phone, FileText, Briefcase, Calendar, Clock, X, Search, ShieldCheck, Mail, Camera, Image as ImageIcon, CreditCard, Bike, MapPin, Hash, FileUp, Upload, Ban, Scan } from 'lucide-react';
+import { User, Car, Check, AlertCircle, RefreshCw, Share2, Download, Copy, Building2, ChevronRight, ArrowLeft, HelpCircle, Phone, FileText, Briefcase, Calendar, Clock, X, Search, ShieldCheck, Mail, Camera, Image as ImageIcon, CreditCard, Bike, MapPin, Hash, FileUp, Upload, Ban, Scan, RotateCcw } from 'lucide-react';
 import { StaffDashboard } from './StaffPages';
 import { OperatorDashboard } from './OperatorPages';
 
@@ -28,6 +28,134 @@ const SPECIFIED_LOCATIONS = [
   { value: 'Fasiliti Sukan', label: 'Fasiliti Sukan' },
   { value: 'Ruang Komuniti', label: 'Ruang Komuniti' },
 ];
+
+// Custom Camera Modal Component
+const CameraModal = ({ onCapture, onClose }: { onCapture: (dataUrl: string) => void, onClose: () => void }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [error, setError] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    startCamera();
+    return () => stopCamera();
+  }, []);
+
+  const startCamera = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      setLoading(false);
+    } catch (err) {
+      setError('Unable to access camera. Please ensure you have granted camera permissions.');
+      setLoading(false);
+      console.error(err);
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+  };
+
+  const capture = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setCapturedImage(dataUrl);
+      }
+    }
+  };
+
+  const retake = () => {
+    setCapturedImage(null);
+  };
+
+  const confirm = () => {
+    if (capturedImage) {
+      onCapture(capturedImage);
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-4 animate-in fade-in duration-300">
+      <div className="w-full max-w-md bg-[#1E1E2E] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        
+        {/* Header */}
+        <div className="p-4 border-b border-white/5 flex items-center justify-between bg-white/5">
+          <h3 className="text-white font-bold flex items-center gap-2">
+            <Camera size={18} /> Take Photo
+          </h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 transition-all">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden">
+          {error ? (
+            <div className="p-6 text-center text-red-400">
+              <AlertCircle size={40} className="mx-auto mb-2" />
+              <p className="text-sm">{error}</p>
+              <button onClick={startCamera} className="mt-4 text-xs font-bold bg-white/10 px-4 py-2 rounded-xl text-white">Retry</button>
+            </div>
+          ) : capturedImage ? (
+            <img src={capturedImage} alt="Captured" className="w-full h-full object-contain" />
+          ) : (
+            <>
+              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+              {loading && <div className="absolute inset-0 flex items-center justify-center"><RefreshCw className="animate-spin text-white/50" size={32} /></div>}
+            </>
+          )}
+          <canvas ref={canvasRef} className="hidden" />
+        </div>
+
+        {/* Footer Controls */}
+        <div className="p-6 border-t border-white/5 bg-white/5">
+          {capturedImage ? (
+            <div className="flex gap-4">
+              <button onClick={retake} className="flex-1 py-3 rounded-2xl bg-white/10 text-white font-bold text-sm hover:bg-white/20 transition-all flex items-center justify-center gap-2">
+                <RotateCcw size={16} /> Retake
+              </button>
+              <button onClick={confirm} className="flex-1 py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-500 transition-all shadow-lg flex items-center justify-center gap-2">
+                <Check size={16} /> Use Photo
+              </button>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <button 
+                onClick={capture} 
+                disabled={loading || !!error}
+                className="w-16 h-16 rounded-full border-4 border-white/30 p-1 flex items-center justify-center hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="w-full h-full bg-white rounded-full"></div>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const VisitorLanding = () => {
   const navigate = useNavigate();
@@ -62,7 +190,7 @@ export const VisitorLanding = () => {
                         <User className="text-white" size={24} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Ad-hoc Visitor</h3>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Visitor</h3>
                         <p className="text-slate-500 dark:text-white/40 text-xs mt-1">I don't have an appointment</p>
                     </div>
                 </div>
@@ -77,8 +205,8 @@ export const VisitorLanding = () => {
                         <Check className="text-white" size={24} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Pre-registered Visitor</h3>
-                        <p className="text-slate-500 dark:text-white/40 text-xs mt-1">I have an invite code</p>
+                        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Request an Appointment</h3>
+                        <p className="text-slate-500 dark:text-white/40 text-xs mt-1">Pre-register</p>
                     </div>
                 </div>
                 <ChevronRight className="text-slate-300 dark:text-white/20 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
@@ -109,8 +237,13 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
   const { addVisitor, checkBlacklist } = useStore();
   const [loading, setLoading] = useState(false);
   const [blacklistError, setBlacklistError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Specific refs for inputs
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
+  
+  // Camera State
+  const [showCamera, setShowCamera] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -166,6 +299,7 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
     }
 
     if (!formData.icNumber.trim()) newErrors.icNumber = 'IC Number is required';
+    if (!formData.icPhoto) newErrors.icPhoto = 'IC/ID photo is required';
     if (!formData.purpose) newErrors.purpose = 'Purpose of visit is required';
 
     // Date Validations
@@ -196,7 +330,6 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
     if (['External TNB Staff', 'External Staff'].includes(p)) {
       if (!formData.staffNumber.trim()) newErrors.staffNumber = 'Staff number is required';
       if (!formData.location.trim()) newErrors.location = 'Location is required';
-      if (!formData.icPhoto) newErrors.icPhoto = 'ID Snapshot is required';
     }
 
     if (formData.transportMode === TransportMode.CAR) {
@@ -243,6 +376,12 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
   return (
     <div className="max-w-md mx-auto pt-6 px-4 pb-20">
       {loading && <LoadingOverlay message="Creating your digital pass..." />}
+      {showCamera && (
+        <CameraModal 
+          onCapture={(img) => setFormData(prev => ({ ...prev, icPhoto: img }))} 
+          onClose={() => setShowCamera(false)} 
+        />
+      )}
       
       <div className="flex items-center justify-between mb-6">
         <button onClick={() => navigate('/visitor')} className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors">
@@ -309,7 +448,7 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                         <div className="grid grid-cols-2 gap-3">
                             <button 
                                 type="button" 
-                                onClick={() => fileInputRef.current?.click()}
+                                onClick={() => setShowCamera(true)}
                                 className="flex flex-col items-center justify-center gap-2 py-8 bg-slate-50 dark:bg-[#151520] hover:bg-slate-100 dark:hover:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 border-dashed rounded-2xl text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white transition-all"
                             >
                                 <Camera size={24} />
@@ -317,7 +456,7 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                             </button>
                             <button 
                                 type="button" 
-                                onClick={() => { if(fileInputRef.current) { fileInputRef.current.removeAttribute('capture'); fileInputRef.current.click(); } }}
+                                onClick={() => galleryInputRef.current?.click()}
                                 className="flex flex-col items-center justify-center gap-2 py-8 bg-slate-50 dark:bg-[#151520] hover:bg-slate-100 dark:hover:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 border-dashed rounded-2xl text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white transition-all"
                             >
                                 <ImageIcon size={24} />
@@ -326,15 +465,14 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                         </div>
                     )}
                     <input 
-                        ref={fileInputRef}
+                        ref={galleryInputRef}
                         type="file" 
                         accept="image/*" 
-                        capture="environment"
                         className="hidden" 
                         onChange={e => handleFileChange(e, 'icPhoto')}
                     />
                 </div>
-                {errors.icPhoto && <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium">{errors.icPhoto}</p>}
+                {errors.icPhoto && <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium animate-in fade-in slide-in-from-top-1">{errors.icPhoto}</p>}
             </div>
         </GlassCard>
 
