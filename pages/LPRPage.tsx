@@ -5,7 +5,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { useStore } from '../store';
 import { GlassCard, Button, LoadingOverlay, Toast, Spinner, StatusBadge, ConfirmModal } from '../components/GlassComponents';
 import { Visitor, VisitorStatus, TransportMode, LPRLog, UserRole, VipType, VipRecord, VEHICLE_COLORS } from '../types';
-import { ArrowLeft, Camera, Scan, Car, ShieldCheck, AlertCircle, Ban, RefreshCw, UserCheck, Briefcase, Check, Search, Trash2, ListFilter, Info, MessageSquare, ChevronDown, LogOut, History, X, Phone, User, Clock, ShieldAlert, ExternalLink, Activity, Sparkles, TrendingUp, LogIn, LogOut as LogOutIcon, Crown, Timer, Palette } from 'lucide-react';
+import { ArrowLeft, Camera, Scan, Car, ShieldCheck, AlertCircle, Ban, RefreshCw, UserCheck, Briefcase, Check, Search, Trash2, ListFilter, Info, MessageSquare, ChevronDown, LogOut, History, X, Phone, User, Clock, ShieldAlert, ExternalLink, Activity, LogIn, LogOut as LogOutIcon, Crown, Timer, Palette } from 'lucide-react';
 
 const LPR_SCHEMA = {
   type: Type.OBJECT,
@@ -235,8 +235,6 @@ export const LPRDetectionPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLog, setSelectedLog] = useState<LPRLog | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [isSummarizing, setIsSummarizing] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -409,25 +407,6 @@ export const LPRDetectionPage = () => {
     };
   }, [lprLogs, lprMode]);
 
-  const handleSummarize = async () => {
-    setIsSummarizing(true);
-    try {
-      const logs = lprLogs.filter(l => l.mode === lprMode);
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Summarize today's ${lprMode.toLowerCase()} LPR scan activity for the building security team. 
-        Data: ${JSON.stringify(logs.map(l => ({ plate: l.plate, status: l.status, timestamp: l.timestamp })))}
-        Keep it professional and highlight any rejected or blacklisted attempts.`
-      });
-      setAiSummary(response.text || "Summary unavailable.");
-    } catch (error) {
-      setAiSummary("Error generating summary.");
-    } finally {
-      setIsSummarizing(false);
-    }
-  };
-
   const filteredLogs = useMemo(() => {
     // 1. Filter by the current terminal mode (Entry vs Exit)
     let base = lprLogs.filter(log => log.mode === lprMode);
@@ -517,33 +496,6 @@ export const LPRDetectionPage = () => {
                    <p className={`text-2xl font-black z-10 relative ${stat.color || 'text-slate-900 dark:text-white'}`}>{stat.count}</p>
                 </div>
               ))}
-            </section>
-
-            {/* Summarize Today (Gemini AI) */}
-            <section>
-               <GlassCard className="!p-6 !bg-gradient-to-br from-blue-50 to-white dark:from-blue-600/10 dark:to-transparent border-blue-100 dark:border-blue-500/20">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                       <Sparkles size={18} className="text-blue-500 dark:text-blue-400" />
-                       <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-white/80">Summarize Today's {lprMode === 'ENTRY' ? 'Entries' : 'Exits'}</h3>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      className="!py-2 !px-4 text-[9px] font-black uppercase tracking-widest h-10"
-                      onClick={handleSummarize}
-                      loading={isSummarizing}
-                    >
-                      {aiSummary ? 'Regenerate' : 'Generate'}
-                    </Button>
-                  </div>
-                  {aiSummary && (
-                    <div className="p-4 bg-slate-100 dark:bg-black/40 rounded-2xl border border-slate-200 dark:border-white/5 animate-in slide-in-from-top-2">
-                      <p className="text-[11px] leading-relaxed text-slate-700 dark:text-white/70 italic">
-                        {aiSummary}
-                      </p>
-                    </div>
-                  )}
-               </GlassCard>
             </section>
 
             {/* Camera Viewfinder */}
