@@ -117,10 +117,8 @@ const Layout = ({ children }: { children?: React.ReactNode }) => {
       </div>
 
       <main className="relative z-10 min-h-screen pb-24 flex flex-col">
-        {/* Header with Theme Toggle */}
-        <div className="absolute top-4 right-4 z-50">
-          <ThemeToggle />
-        </div>
+        {/* Floating Theme Toggle (Bottom Left) */}
+        <ThemeToggle />
         
         <div className="flex-1">
           {children}

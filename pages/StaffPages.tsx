@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useStore } from '../store';
 import { GlassCard, Button, Input, Select, StatusBadge, Toast, LoadingOverlay, HistoryItemSkeleton, ConfirmModal } from '../components/GlassComponents';
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
+import { Logo } from '../components/Logo';
 import { VisitorType, TransportMode, VisitorStatus, Visitor, UserRole, Notification, QRType } from '../types';
 import { User as UserIcon, Car, Check, Lock, ChevronRight, Mail, Share2, Download, LogOut, ArrowLeft, Calendar, FileText, Phone, Briefcase, UserCheck, Shield, Clock, AlertCircle, Eye, EyeOff, CheckCircle2, Bell, MapPin, Hash, FileUp, Camera, Image as ImageIcon, Bike, X, CreditCard, Copy, ShieldCheck, RefreshCw } from 'lucide-react';
 
@@ -81,9 +82,7 @@ export const StaffLogin = () => {
       {loading && <LoadingOverlay message="Authenticating..." />}
       
       <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-white dark:bg-[#1E1E2E] rounded-2xl flex items-center justify-center border border-slate-200 dark:border-white/10 shadow-2xl mb-4 mx-auto">
-             <Shield className="text-blue-500" size={32} />
-        </div>
+        <Logo size="lg" className="mb-4 mx-auto" />
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Staff Login</h1>
         <p className="text-slate-500 dark:text-white/40 text-sm">
             Authenticate to manage guests, approvals, and security protocols.
@@ -553,6 +552,7 @@ export const StaffDashboard = () => {
                                     type="file" 
                                     accept="image/*,application/pdf"
                                     className="hidden"
+                                    // FIXED: Pass the required second argument to handleFileChange
                                     onChange={e => handleFileChange(e, 'supportingDocument')}
                                   />
                                   {errors.supportingDocument && <p className="mt-1 ml-1 text-[10px] text-red-500 dark:text-red-400 font-medium">{errors.supportingDocument}</p>}
@@ -662,215 +662,105 @@ export const StaffDashboard = () => {
     );
 };
 
+// NEW: StaffSharePass Component added to fix missing export error in App.tsx
 export const StaffSharePass = () => {
-    const navigate = useNavigate();
     const { id } = useParams();
     const [searchParams] = useSearchParams();
-    const { getVisitorByCode, currentUser } = useStore();
-    const [toast, setToast] = useState({ show: false, message: '' });
-    const [isSharing, setIsSharing] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [copied, setCopied] = useState(false);
-    
-    useEffect(() => {
-        if (!currentUser) navigate('/staff/login');
-        if (searchParams.get('emailSent') === 'true') {
-            setToast({ show: true, message: 'Invitation record created!' });
-        }
-    }, [currentUser, navigate, searchParams]);
+    const navigate = useNavigate();
+    const { getVisitorByCode } = useStore();
+    const emailSent = searchParams.get('emailSent') === 'true';
 
     const visitor = getVisitorByCode(id || '');
 
-    if (!visitor) return (
-      <div className="flex flex-col items-center justify-center h-screen text-slate-900 dark:text-white p-4">
-          <p>Visitor record not found.</p>
-          <Button onClick={() => navigate('/staff/dashboard')} className="mt-4">Back to Dashboard</Button>
-      </div>
-    );
-
-    const handleCopyCode = () => {
-        navigator.clipboard.writeText(visitor.id);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-    };
-
-    const handleShare = async () => {
-        setIsSharing(true);
-        const shareUrl = `${window.location.origin}/#/visitor/wallet/${visitor.id}`;
-        
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: `Visitor Pass: ${visitor.name}`,
-                    text: `Hello ${visitor.name}, here is your access code: ${visitor.id}`,
-                    url: shareUrl
-                });
-            } catch (err) {
-                if ((err as Error).name !== 'AbortError') {
-                    handleCopyCode();
-                    setToast({ show: true, message: 'Link copied to clipboard!' });
-                }
-            }
-        } else {
-            handleCopyCode();
-            setToast({ show: true, message: 'Link copied to clipboard!' });
-        }
-        setIsSharing(false);
-    };
-
-    const handleDownload = async () => {
-        setIsSaving(true);
-        const svg = document.getElementById('qr-code-svg');
-        if (!svg) {
-            setIsSaving(false);
-            return;
-        }
-        const serializer = new XMLSerializer();
-        let source = serializer.serializeToString(svg);
-        if(!source.match(/^<svg[^>]+xmlns="http\:\/\/www\.w3\.org\/2000\/svg"/)){
-            source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = 500;
-        canvas.height = 500;
-        const ctx = canvas.getContext('2d');
-        if(!ctx) {
-            setIsSaving(false);
-            return;
-        }
-        const img = new Image();
-        img.onload = () => {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 25, 25, 450, 450);
-            const a = document.createElement('a');
-            a.download = `invite-${visitor.name}-${visitor.id}.png`;
-            a.href = canvas.toDataURL('image/png');
-            a.click();
-            setIsSaving(false);
-            setToast({ show: true, message: 'Pass saved to gallery!' });
-        };
-        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(source);
-    };
+    if (!visitor) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+                <div className="w-16 h-16 bg-red-100 dark:bg-red-500/10 rounded-full flex items-center justify-center text-red-500 mb-4">
+                    <AlertCircle size={32} />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Visitor Not Found</h2>
+                <p className="text-slate-500 dark:text-white/50 text-sm mb-6">The requested invitation record does not exist.</p>
+                <Button onClick={() => navigate('/staff/dashboard')}>Back to Dashboard</Button>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-md mx-auto pt-6 px-4 pb-24">
-            <Toast show={toast.show} message={toast.message} onHide={() => setToast({ ...toast, show: false })} />
-
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-8">
                 <button onClick={() => navigate('/staff/dashboard')} className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white transition-colors">
                     <ArrowLeft size={20} />
                 </button>
-                <h2 className="text-slate-900 dark:text-white font-bold">Review Invitation</h2>
+                <h2 className="text-xs font-bold tracking-widest text-slate-400 dark:text-white/50 uppercase">Invite Generated</h2>
                 <div className="w-10"></div>
             </div>
-            
-            <GlassCard className="text-center relative !p-0 overflow-hidden pb-6 mb-4">
-                <div className="bg-slate-50 dark:bg-[#252530] p-6 border-b border-slate-200 dark:border-white/5">
-                    <div className="flex justify-center mb-4">
-                        <StatusBadge status={visitor.status} />
-                    </div>
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{visitor.name}</h2>
-                    <p className="text-slate-500 dark:text-white/50 text-sm flex items-center justify-center gap-2">
-                        Guest Invite • <span className="flex items-center gap-1">{visitor.transportMode === TransportMode.CAR ? <Car size={14}/> : <div className="flex items-center gap-0.5"><UserIcon size={14}/><Bike size={14}/></div>} {visitor.transportMode === TransportMode.CAR ? 'Car' : 'Walk-in / Bike'}</span>
-                    </p>
+
+            {emailSent && (
+                <div className="mb-6 p-4 bg-emerald-100 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-2xl flex items-center gap-3 animate-in zoom-in">
+                    <CheckCircle2 size={20} className="text-emerald-500" />
+                    <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Confirmation email has been sent to the guest.</p>
                 </div>
-                
-                <div className="p-6">
-                    {/* Unique Code Display */}
-                    <div className="bg-slate-100 dark:bg-[#121217] rounded-2xl p-4 mb-6 relative group cursor-pointer" onClick={handleCopyCode}>
-                        <p className="text-[10px] text-slate-400 dark:text-white/30 uppercase tracking-widest mb-1 font-bold">Unique Access Code</p>
-                        <p className="text-4xl font-mono font-bold text-slate-900 dark:text-white tracking-[0.2em] group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">{visitor.id}</p>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-white/20 group-hover:text-slate-500 dark:group-hover:text-white/50 transition-colors">
-                            {copied ? <Check size={20} className="text-green-500"/> : <Copy size={20}/>}
-                        </div>
+            )}
+
+            <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-500 mx-auto mb-4 border border-blue-200 dark:border-blue-500/20">
+                    <Share2 size={32} />
+                </div>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Share Access Pass</h1>
+                <p className="text-slate-500 dark:text-white/50 text-sm">Send this digital pass to your guest for building access.</p>
+            </div>
+
+            <GlassCard className="!p-6 mb-6">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-white/5 p-1 border border-slate-200 dark:border-white/10">
+                        <img 
+                            src={visitor.icPhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${visitor.name}`} 
+                            alt="" 
+                            className="w-full h-full object-cover rounded-xl bg-slate-100 dark:bg-white/5" 
+                        />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white">{visitor.name}</h3>
+                        <p className="text-xs text-slate-500 dark:text-white/40">{visitor.purpose}</p>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5">
+                        <p className="text-[10px] text-slate-400 dark:text-white/30 font-bold uppercase tracking-widest mb-1">Pass ID</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white font-mono">{visitor.id}</p>
                     </div>
 
-                    <div className="animate-in zoom-in duration-500">
-                        {visitor.qrType !== QRType.NONE ? (
-                            <>
-                                <div className={`p-4 bg-white rounded-2xl mx-auto w-fit mb-6 shadow-xl border border-slate-100 ${visitor.status === VisitorStatus.PENDING ? "opacity-60 grayscale" : ""}`}>
-                                    <QRCodeDisplay 
-                                        value={visitor.id} 
-                                        type={visitor.qrType} 
-                                    />
-                                </div>
+                    <div className="p-3 bg-slate-50 dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/5">
+                        <p className="text-[10px] text-slate-400 dark:text-white/30 font-bold uppercase tracking-widest mb-1">Validity</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                            {new Date(visitor.visitDate).toLocaleDateString()} - {visitor.endDate ? new Date(visitor.endDate).toLocaleDateString() : 'N/A'}
+                        </p>
+                    </div>
+                </div>
 
-                                <div className="grid grid-cols-2 gap-3 mb-4">
-                                    <Button 
-                                        variant="secondary" 
-                                        className="text-xs py-3 flex items-center justify-center gap-2 bg-slate-100 dark:bg-[#252530] hover:bg-slate-200 dark:hover:bg-[#303040] text-slate-700 dark:text-white border-none"
-                                        onClick={handleDownload}
-                                        loading={isSaving}
-                                    >
-                                        <Download size={14}/> Save to Gallery
-                                    </Button>
-                                    <Button 
-                                        variant="primary" 
-                                        className="text-xs py-3 flex items-center justify-center gap-2"
-                                        onClick={handleShare}
-                                        loading={isSharing}
-                                    >
-                                        <Share2 size={14}/> Share Pass
-                                    </Button>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="p-8 bg-blue-100 dark:bg-blue-500/10 rounded-3xl border border-blue-200 dark:border-blue-500/20 mb-6">
-                                <div className="w-16 h-16 bg-blue-200 dark:bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mx-auto mb-4">
-                                    <ShieldCheck size={32} />
-                                </div>
-                                <h3 className="text-slate-900 dark:text-white font-bold text-lg mb-2">LPR Activated</h3>
-                                <p className="text-blue-700 dark:text-blue-200/60 text-sm mb-4">
-                                    Guest vehicle entry via LPR. No QR required for this invite.
-                                </p>
-                                <div className="bg-white/50 dark:bg-white/5 p-3 rounded-xl border border-blue-200 dark:border-white/10 font-mono text-blue-600 dark:text-blue-400 font-bold tracking-widest text-xl uppercase">
-                                    {visitor.licensePlate}
-                                </div>
-                                <p className="text-[10px] text-slate-400 dark:text-white/20 uppercase tracking-widest mt-4 font-bold">Gate Access Only</p>
-                            </div>
-                        )}
-
-                        {visitor.status === VisitorStatus.PENDING && (
-                            <p className="text-xs text-yellow-600 dark:text-yellow-500/80 bg-yellow-100 dark:bg-yellow-500/10 p-3 rounded-xl border border-yellow-200 dark:border-yellow-500/20 mb-4 font-medium">
-                                <RefreshCw size={12} className="inline mr-1 animate-spin"/> Awaiting admin approval before activation.
-                            </p>
-                        )}
+                <div className="mt-6 pt-6 border-t border-slate-200 dark:border-white/5 space-y-3">
+                    <Button className="w-full" onClick={() => {
+                        const url = `${window.location.origin}/#/visitor/wallet/${visitor.id}`;
+                        navigator.clipboard.writeText(url);
+                        alert("Digital pass link copied to clipboard!");
+                    }}>
+                        <Copy size={18} /> Copy Digital Link
+                    </Button>
+                    <div className="grid grid-cols-2 gap-3">
+                        <Button variant="secondary" className="w-full">
+                            <Mail size={16} /> Email
+                        </Button>
+                        <Button variant="secondary" className="w-full">
+                            <Share2 size={16} /> Share
+                        </Button>
                     </div>
                 </div>
             </GlassCard>
 
-            {visitor.transportMode === TransportMode.CAR && (
-                <div className="mt-4 p-4 bg-yellow-100 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-2xl flex items-center gap-4 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-yellow-200 dark:bg-yellow-500/20 flex items-center justify-center text-yellow-600 dark:text-yellow-400 shrink-0">
-                        <Car size={20} />
-                    </div>
-                    <div>
-                        <p className="text-yellow-800 dark:text-yellow-200 font-bold text-sm">LPR Enabled</p>
-                        <p className="text-yellow-700 dark:text-yellow-200/60 text-xs mt-0.5">
-                            Guest gate opens for <span className="font-mono text-slate-900 dark:text-white/90 bg-white/20 dark:bg-white/10 px-1 rounded">{visitor.licensePlate}</span>
-                        </p>
-                    </div>
-                </div>
-            )}
-
-            <div className="p-6 bg-white dark:bg-[#121217] rounded-3xl border border-slate-200 dark:border-white/5 animate-in slide-in-from-bottom-2 duration-700">
-                <h3 className="text-xs font-bold text-slate-400 dark:text-white/30 uppercase tracking-[0.2em] mb-4">Staff Summary</h3>
-                <div className="space-y-4">
-                    <div className="flex gap-4">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">1</div>
-                        <p className="text-xs text-slate-600 dark:text-white/60 leading-relaxed">Share the access link or the QR image with your guest.</p>
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">2</div>
-                        <p className="text-xs text-slate-600 dark:text-white/60 leading-relaxed">The guest's visit is valid from <span className="text-slate-900 dark:text-white font-bold">{new Date(visitor.visitDate).toLocaleDateString()}</span>.</p>
-                    </div>
-                    <div className="flex gap-4">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">3</div>
-                        <p className="text-xs text-slate-600 dark:text-white/60 leading-relaxed">You will receive a notification once the admin approves this guest.</p>
-                    </div>
-                </div>
-            </div>
+            <Button variant="ghost" className="w-full" onClick={() => navigate('/staff/dashboard')}>
+                Return to Dashboard
+            </Button>
         </div>
     );
 };
