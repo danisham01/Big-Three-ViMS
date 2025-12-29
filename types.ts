@@ -29,6 +29,71 @@ export enum UserRole {
   LPR_READER = 'LPR_READER',
 }
 
+export enum VipType {
+  VVIP = 'VVIP',
+  VIP = 'VIP',
+}
+
+export const VIP_DESIGNATIONS = [
+  'Head of State / Royal',
+  'Minister',
+  'Deputy Minister',
+  'Secretary-General',
+  'Director-General',
+  'Chief Executive Officer (CEO)',
+  'Chief Operating Officer (COO)',
+  'Chief Financial Officer (CFO)',
+  'Chief Information Officer (CIO)',
+  'Board Chairman',
+  'Board Member',
+  'Senior Advisor',
+  'Ambassador / High Commissioner',
+  'Chief of Police / Armed Forces Representative',
+  'State Director',
+  'General Manager',
+  'Senior Manager',
+  'Project Director',
+  'VIP Guest (General)',
+  'Other (Specify)'
+];
+
+export const VEHICLE_COLORS = [
+  'Black', 'White', 'Silver', 'Grey', 'Blue', 'Red', 'Gold', 'Green', 'Brown', 'Yellow', 'Other'
+];
+
+export interface VipRecord {
+  id: string;
+  vipType: VipType;
+  designation: string;
+  customDesignation?: string;
+  name: string;
+  contact: string;
+  icNumber?: string;
+  
+  licensePlate: string;
+  vehicleColor?: string; // Simplified Vehicle Intel
+  
+  validFrom: string; // ISO String
+  validUntil: string; // ISO String
+  
+  autoApprove: boolean;
+  autoOpenGate: boolean;
+  accessPoints: string[]; // ['ENTRY_LPR', 'EXIT_LPR']
+  
+  reason: string;
+  attachment?: string; // base64
+  
+  // Movement Tracking
+  lastEntryTime?: string;
+  lastExitTime?: string;
+  
+  createdBy: string;
+  createdAt: string;
+  updatedBy?: string;
+  updatedAt?: string;
+  status: 'ACTIVE' | 'EXPIRED' | 'DEACTIVATED';
+}
+
 export interface User {
   username: string;
   role: UserRole;
@@ -68,6 +133,7 @@ export interface Visitor {
   type: VisitorType;
   transportMode: TransportMode;
   licensePlate?: string;
+  vehicleColor?: string; // New field for consistency
   status: VisitorStatus;
   rejectionReason?: string;
   qrType: QRType;
@@ -91,18 +157,17 @@ export interface AccessLog {
   visitorId: string;
   visitorName: string;
   timestamp: string;
-  action: 'ENTRY' | 'EXIT' | 'DENIED' | 'MANUAL_OVERRIDE' | 'BLACKLIST_HIT';
-  location: 'FRONT_GATE' | 'ELEVATOR';
-  method: 'QR' | 'LPR' | 'MANUAL';
+  action: 'ENTRY' | 'EXIT' | 'DENIED' | 'MANUAL_OVERRIDE' | 'BLACKLIST_HIT' | 'VIP_UPDATE';
+  location: 'FRONT_GATE' | 'ELEVATOR' | 'SYSTEM';
+  method: 'QR' | 'LPR' | 'MANUAL' | 'SYSTEM';
   details?: string;
 }
 
 export interface LPRLog {
   id: string;
   plate: string;
-  make: string;
-  model: string;
-  confidence: number;
+  vehicleColor?: string; // Simplified Vehicle Intel
+  confidence?: number;
   thumbnail: string;
   timestamp: string;
   mode: 'ENTRY' | 'EXIT';
@@ -110,6 +175,10 @@ export interface LPRLog {
   visitorId?: string;
   requestorName?: string;
   phoneNumber?: string;
+  // New VIP Fields
+  isVip?: boolean;
+  vipType?: VipType;
+  designation?: string;
 }
 
 export interface Stats {

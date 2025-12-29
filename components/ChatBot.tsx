@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
 import { Spinner } from './GlassComponents';
@@ -102,26 +103,26 @@ export const ChatBot = () => {
         isOpen ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-20 opacity-0 scale-90 pointer-events-none'
       }`}>
         {/* Replaced GlassCard with a custom div to ensure flex-1 scrolling works correctly */}
-        <div className="h-[550px] flex flex-col bg-[#121217]/95 backdrop-blur-xl border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)] rounded-3xl overflow-hidden relative">
+        <div className="h-[550px] flex flex-col bg-white/95 dark:bg-[#121217]/95 backdrop-blur-xl border border-slate-200 dark:border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.5)] rounded-3xl overflow-hidden relative transition-colors">
           
           {/* Subtle Glows */}
           <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
           {/* Header */}
-          <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0 relative z-10">
+          <div className="p-4 border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/5 flex items-center justify-between shrink-0 relative z-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
                 <Sparkles size={20} />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Smart Assistant</h3>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Smart Assistant</h3>
                 <div className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Online</span>
+                  <span className="text-[10px] text-slate-500 dark:text-white/40 font-bold uppercase tracking-widest">Online</span>
                 </div>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-white/20 hover:text-white transition-colors">
+            <button onClick={() => setIsOpen(false)} className="text-slate-400 dark:text-white/20 hover:text-slate-900 dark:hover:text-white transition-colors">
               <ChevronDown size={20} />
             </button>
           </div>
@@ -137,7 +138,7 @@ export const ChatBot = () => {
                 <div className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${
                   msg.role === 'user' 
                   ? 'bg-blue-600 text-white rounded-tr-none shadow-lg shadow-blue-900/10' 
-                  : 'bg-white/5 text-white/80 border border-white/5 rounded-tl-none'
+                  : 'bg-slate-100 dark:bg-white/5 text-slate-800 dark:text-white/80 border border-slate-200 dark:border-white/5 rounded-tl-none'
                 }`}>
                   <div className="whitespace-pre-wrap">{msg.content}</div>
                 </div>
@@ -145,7 +146,7 @@ export const ChatBot = () => {
             ))}
             {isLoading && (
               <div className="flex justify-start animate-pulse">
-                <div className="bg-white/5 border border-white/5 rounded-2xl rounded-tl-none p-3 flex items-center gap-2">
+                <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl rounded-tl-none p-3 flex items-center gap-2">
                   <div className="flex gap-1">
                     <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce"></div>
                     <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]"></div>
@@ -166,7 +167,7 @@ export const ChatBot = () => {
                   <button 
                     key={action}
                     onClick={() => { setInput(action); }}
-                    className="text-[10px] font-bold text-blue-400 bg-blue-400/10 border border-blue-400/20 px-3 py-1.5 rounded-full hover:bg-blue-400/20 transition-all whitespace-nowrap"
+                    className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-400/10 border border-blue-200 dark:border-blue-400/20 px-3 py-1.5 rounded-full hover:bg-blue-200 dark:hover:bg-blue-400/20 transition-all whitespace-nowrap"
                   >
                     {action}
                   </button>
@@ -175,7 +176,7 @@ export const ChatBot = () => {
             )}
 
             {/* Input Area */}
-            <div className="p-4 bg-white/5 border-t border-white/5">
+            <div className="p-4 bg-slate-50 dark:bg-white/5 border-t border-slate-200 dark:border-white/5">
               <div className="flex gap-2 relative">
                 <input 
                   type="text" 
@@ -183,7 +184,7 @@ export const ChatBot = () => {
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSend()}
                   placeholder="Ask me anything..."
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-white/20"
+                  className="flex-1 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-400 dark:placeholder:text-white/20"
                 />
                 <button 
                   onClick={handleSend}
@@ -193,7 +194,7 @@ export const ChatBot = () => {
                   <Send size={18} />
                 </button>
               </div>
-              <p className="text-[8px] text-center text-white/20 mt-3 uppercase tracking-widest font-bold">
+              <p className="text-[8px] text-center text-slate-400 dark:text-white/20 mt-3 uppercase tracking-widest font-bold">
                 Powered by Gemini AI Engine
               </p>
             </div>

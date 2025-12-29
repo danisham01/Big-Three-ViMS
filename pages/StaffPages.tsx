@@ -81,11 +81,11 @@ export const StaffLogin = () => {
       {loading && <LoadingOverlay message="Authenticating..." />}
       
       <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-[#1E1E2E] rounded-2xl flex items-center justify-center border border-white/10 shadow-2xl mb-4 mx-auto">
+        <div className="w-16 h-16 bg-white dark:bg-[#1E1E2E] rounded-2xl flex items-center justify-center border border-slate-200 dark:border-white/10 shadow-2xl mb-4 mx-auto">
              <Shield className="text-blue-500" size={32} />
         </div>
-        <h1 className="text-3xl font-bold text-white mb-2">Staff Portal</h1>
-        <p className="text-white/40 text-sm">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Staff Portal</h1>
+        <p className="text-slate-500 dark:text-white/40 text-sm">
             Authenticate to manage guests, approvals, and security protocols.
         </p>
       </div>
@@ -93,7 +93,7 @@ export const StaffLogin = () => {
       <GlassCard className="w-full !p-6">
         <form onSubmit={handleLogin} className="space-y-4" noValidate>
            {error && (
-               <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-center gap-2 text-red-400 text-xs mb-4">
+               <div className="bg-red-100 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-3 flex items-center gap-2 text-red-600 dark:text-red-400 text-xs mb-4">
                    <AlertCircle size={14} />
                    {error}
                </div>
@@ -126,7 +126,7 @@ export const StaffLogin = () => {
                   <button 
                     type="button" 
                     onClick={togglePasswordVisibility}
-                    className="flex items-center justify-center focus:outline-none hover:text-blue-500 transition-colors"
+                    className="flex items-center justify-center focus:outline-none hover:text-blue-500 transition-colors text-slate-400 dark:text-white/40"
                   >
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -141,10 +141,10 @@ export const StaffLogin = () => {
       </GlassCard>
       
       <div className="mt-8 flex flex-col items-center gap-4">
-          <p className="text-white/20 text-xs text-center px-8">
+          <p className="text-slate-400 dark:text-white/20 text-xs text-center px-8">
               Authorized personnel only. All access is logged for security purposes.
           </p>
-          <button onClick={() => navigate('/visitor')} className="text-white/40 text-sm hover:text-white transition-colors">
+          <button onClick={() => navigate('/visitor')} className="text-slate-500 dark:text-white/40 text-sm hover:text-slate-900 dark:hover:text-white transition-colors">
             &larr; Back to Visitor Home
           </button>
       </div>
@@ -314,22 +314,22 @@ export const StaffDashboard = () => {
 
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-500/10 flex items-center justify-center text-blue-500 dark:text-blue-400">
                         <UserIcon size={20} />
                     </div>
                     <div>
-                        <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">{currentUser.username}</p>
-                        <h1 className="text-xl font-bold text-white">{currentUser.fullName}</h1>
+                        <p className="text-[10px] text-blue-500 dark:text-blue-400 font-bold uppercase tracking-widest">{currentUser.username}</p>
+                        <h1 className="text-xl font-bold text-slate-900 dark:text-white">{currentUser.fullName}</h1>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={() => setView('notifications')}
-                        className={`relative w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center transition-colors ${view === 'notifications' ? 'text-blue-500 border-blue-500/30 bg-blue-500/5' : 'text-white/40 hover:text-white'}`}
+                        className={`relative w-10 h-10 rounded-xl border flex items-center justify-center transition-colors ${view === 'notifications' ? 'text-blue-600 dark:text-blue-500 border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/5' : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 hover:text-slate-900 dark:hover:text-white'}`}
                     >
                         <Bell size={20} />
                         {notifications.filter(n => n.recipient === currentUser.username && !n.read).length > 0 && (
-                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-[#050508] rounded-full animate-pulse"></span>
+                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-slate-50 dark:border-[#050508] rounded-full animate-pulse"></span>
                         )}
                     </button>
                     <Button variant="ghost" className="!p-2 text-red-500/60 hover:text-red-500" onClick={() => setShowLogoutConfirm(true)}>
@@ -338,9 +338,9 @@ export const StaffDashboard = () => {
                 </div>
             </div>
 
-            <div className="flex border-b border-white/10 mb-6">
-                <button onClick={() => setView('register')} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${view === 'register' ? 'border-blue-500 text-white' : 'border-transparent text-white/40'}`}>Invite</button>
-                <button onClick={() => setView('history')} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${view === 'history' ? 'border-blue-500 text-white' : 'border-transparent text-white/40'}`}>History</button>
+            <div className="flex border-b border-slate-200 dark:border-white/10 mb-6">
+                <button onClick={() => setView('register')} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${view === 'register' ? 'border-blue-500 text-blue-600 dark:text-white' : 'border-transparent text-slate-400 dark:text-white/40'}`}>Invite</button>
+                <button onClick={() => setView('history')} className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${view === 'history' ? 'border-blue-500 text-blue-600 dark:text-white' : 'border-transparent text-slate-400 dark:text-white/40'}`}>History</button>
             </div>
 
             {view === 'register' ? (
@@ -367,12 +367,12 @@ export const StaffDashboard = () => {
                         />
 
                         <div className="mb-4">
-                            <label className="block text-xs font-medium text-white/60 mb-2 ml-1 uppercase tracking-wider">
+                            <label className="block text-xs font-medium text-slate-500 dark:text-white/60 mb-2 ml-1 uppercase tracking-wider">
                               {['External TNB Staff', 'External Staff'].includes(formData.purpose) ? 'ID Snapshot (Required)' : 'IC / ID Photo'}
                             </label>
                             <div className="flex flex-col gap-3">
                                 {formData.icPhoto ? (
-                                    <div className="relative group rounded-2xl overflow-hidden aspect-video border border-white/10 bg-black/40">
+                                    <div className="relative group rounded-2xl overflow-hidden aspect-video border border-slate-200 dark:border-white/10 bg-black/40">
                                         <img src={formData.icPhoto} alt="IC Preview" className="w-full h-full object-cover" />
                                         <button 
                                             type="button"
@@ -387,7 +387,7 @@ export const StaffDashboard = () => {
                                         <button 
                                             type="button" 
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="flex flex-col items-center justify-center gap-2 py-8 bg-[#151520] hover:bg-[#1E1E2E] border border-white/5 border-dashed rounded-2xl text-white/40 hover:text-white transition-all"
+                                            className="flex flex-col items-center justify-center gap-2 py-8 bg-slate-50 dark:bg-[#151520] hover:bg-slate-100 dark:hover:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 border-dashed rounded-2xl text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white transition-all"
                                         >
                                             <Camera size={24} />
                                             <span className="text-[10px] font-bold uppercase tracking-widest">Snapshot</span>
@@ -395,7 +395,7 @@ export const StaffDashboard = () => {
                                         <button 
                                             type="button" 
                                             onClick={() => { if(fileInputRef.current) { fileInputRef.current.removeAttribute('capture'); fileInputRef.current.click(); } }}
-                                            className="flex flex-col items-center justify-center gap-2 py-8 bg-[#151520] hover:bg-[#1E1E2E] border border-white/5 border-dashed rounded-2xl text-white/40 hover:text-white transition-all"
+                                            className="flex flex-col items-center justify-center gap-2 py-8 bg-slate-50 dark:bg-[#151520] hover:bg-slate-100 dark:hover:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 border-dashed rounded-2xl text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white transition-all"
                                         >
                                             <ImageIcon size={24} />
                                             <span className="text-[10px] font-bold uppercase tracking-widest">Gallery</span>
@@ -518,12 +518,12 @@ export const StaffDashboard = () => {
                             />
 
                             {durationDays > 0 && (
-                              <div className={`p-3 rounded-xl border flex items-center justify-between animate-in fade-in zoom-in ${isLongTerm ? 'bg-orange-500/10 border-orange-500/30' : 'bg-blue-500/10 border-blue-500/30'}`}>
+                              <div className={`p-3 rounded-xl border flex items-center justify-between animate-in fade-in zoom-in ${isLongTerm ? 'bg-orange-100 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/30' : 'bg-blue-100 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30'}`}>
                                 <div className="flex items-center gap-2">
-                                  <Clock size={16} className={isLongTerm ? 'text-orange-400' : 'text-blue-400'} />
-                                  <span className="text-[10px] font-black uppercase tracking-widest text-white/70">Visit Duration</span>
+                                  <Clock size={16} className={isLongTerm ? 'text-orange-500 dark:text-orange-400' : 'text-blue-500 dark:text-blue-400'} />
+                                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/70">Visit Duration</span>
                                 </div>
-                                <span className={`text-xs font-bold ${isLongTerm ? 'text-orange-400' : 'text-blue-400'}`}>
+                                <span className={`text-xs font-bold ${isLongTerm ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>
                                   {durationDays.toFixed(1)} Days
                                 </span>
                               </div>
@@ -531,20 +531,20 @@ export const StaffDashboard = () => {
 
                             {isLongTerm && (
                               <div className="animate-in slide-in-from-top-2 space-y-3">
-                                <div className="p-3 bg-blue-600/10 border border-blue-500/30 rounded-xl flex gap-3">
-                                  <AlertCircle className="text-blue-400 shrink-0" size={18} />
-                                  <p className="text-[10px] leading-relaxed text-blue-200/70 font-medium">
-                                    <span className="font-bold text-white block mb-0.5">Extended Stay Policy</span>
+                                <div className="p-3 bg-blue-100 dark:bg-blue-600/10 border border-blue-200 dark:border-blue-500/30 rounded-xl flex gap-3">
+                                  <AlertCircle className="text-blue-500 dark:text-blue-400 shrink-0" size={18} />
+                                  <p className="text-[10px] leading-relaxed text-blue-700 dark:text-blue-200/70 font-medium">
+                                    <span className="font-bold text-blue-900 dark:text-white block mb-0.5">Extended Stay Policy</span>
                                     Required for host/approver reference when visit duration exceeds 7 days.
                                   </p>
                                 </div>
                                 
                                 <div className="relative">
-                                  <label className="block text-xs font-medium text-white/60 mb-2 ml-1 uppercase tracking-wider">Supporting Document (Required)</label>
+                                  <label className="block text-xs font-medium text-slate-500 dark:text-white/60 mb-2 ml-1 uppercase tracking-wider">Supporting Document (Required)</label>
                                   <button 
                                     type="button"
                                     onClick={() => docInputRef.current?.click()}
-                                    className={`w-full py-4 px-4 rounded-2xl border-2 border-dashed transition-all flex items-center justify-center gap-3 ${formData.supportingDocument ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'}`}
+                                    className={`w-full py-4 px-4 rounded-2xl border-2 border-dashed transition-all flex items-center justify-center gap-3 ${formData.supportingDocument ? 'bg-emerald-100 dark:bg-emerald-500/10 border-emerald-300 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/40 hover:bg-slate-100 dark:hover:bg-white/10'}`}
                                   >
                                     {formData.supportingDocument ? <><Check size={18} /> Document Attached</> : <><FileUp size={18} /> Upload PDF / Image</>}
                                   </button>
@@ -555,7 +555,7 @@ export const StaffDashboard = () => {
                                     className="hidden"
                                     onChange={e => handleFileChange(e, 'supportingDocument')}
                                   />
-                                  {errors.supportingDocument && <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium">{errors.supportingDocument}</p>}
+                                  {errors.supportingDocument && <p className="mt-1 ml-1 text-[10px] text-red-500 dark:text-red-400 font-medium">{errors.supportingDocument}</p>}
                                 </div>
                               </div>
                             )}
@@ -563,17 +563,17 @@ export const StaffDashboard = () => {
                     </GlassCard>
 
                     <GlassCard title="Transportation" className="!p-5">
-                        <div className="bg-[#121217] p-1 rounded-xl flex mb-4">
+                        <div className="bg-slate-100 dark:bg-[#121217] p-1 rounded-xl flex mb-4">
                             <button
                                 type="button"
-                                className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${formData.transportMode === TransportMode.CAR ? 'bg-[#252530] text-white shadow-lg' : 'text-white/40 hover:text-white/60'}`}
+                                className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${formData.transportMode === TransportMode.CAR ? 'bg-white dark:bg-[#252530] text-slate-900 dark:text-white shadow-lg' : 'text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/60'}`}
                                 onClick={() => setFormData({...formData, transportMode: TransportMode.CAR})}
                             >
                                 <Car size={16} /> Car
                             </button>
                             <button
                                 type="button"
-                                className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${formData.transportMode === TransportMode.NON_CAR ? 'bg-[#252530] text-white shadow-lg' : 'text-white/40 hover:text-white/60'}`}
+                                className={`flex-1 py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${formData.transportMode === TransportMode.NON_CAR ? 'bg-white dark:bg-[#252530] text-slate-900 dark:text-white shadow-lg' : 'text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/60'}`}
                                 onClick={() => setFormData({...formData, transportMode: TransportMode.NON_CAR})}
                             >
                                 <div className="flex items-center gap-1">
@@ -614,19 +614,19 @@ export const StaffDashboard = () => {
                       </>
                     ) : staffHistory.length === 0 ? (
                         <div className="text-center py-10 opacity-40">
-                            <UserCheck size={40} className="mx-auto mb-2" />
-                            <p>No history yet.</p>
+                            <UserCheck size={40} className="mx-auto mb-2 text-slate-400 dark:text-white/40" />
+                            <p className="text-slate-500 dark:text-white/40">No history yet.</p>
                         </div>
                     ) : (
                         staffHistory.map(v => (
-                            <div key={v.id} onClick={() => navigate(`/staff/share/${v.id}`)} className="bg-[#151520] border border-white/5 p-4 rounded-2xl flex items-center justify-between cursor-pointer hover:bg-[#1E1E2E] transition-colors group">
+                            <div key={v.id} onClick={() => navigate(`/staff/share/${v.id}`)} className="bg-white dark:bg-[#151520] border border-slate-200 dark:border-white/5 p-4 rounded-2xl flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-[#1E1E2E] transition-colors group">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/50 group-hover:bg-blue-500/10 group-hover:text-blue-400 transition-colors">
+                                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-white/50 group-hover:bg-blue-100 dark:group-hover:bg-blue-500/10 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
                                         <UserIcon size={20} />
                                     </div>
                                     <div>
-                                        <h3 className="text-white font-bold">{v.name}</h3>
-                                        <p className="text-white/40 text-[10px]">{v.purpose}</p>
+                                        <h3 className="text-slate-900 dark:text-white font-bold">{v.name}</h3>
+                                        <p className="text-slate-500 dark:text-white/40 text-[10px]">{v.purpose}</p>
                                     </div>
                                 </div>
                                 <StatusBadge status={v.status} />
@@ -637,18 +637,18 @@ export const StaffDashboard = () => {
             ) : (
                 <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4">
                     {notifications.filter(n => n.recipient === currentUser.username).length === 0 ? (
-                        <div className="text-center py-12 text-white/20">
-                            <Bell size={40} className="mx-auto mb-2 opacity-5" />
+                        <div className="text-center py-12 text-slate-400 dark:text-white/20">
+                            <Bell size={40} className="mx-auto mb-2 opacity-20" />
                             <p className="text-xs font-bold uppercase tracking-widest">No notifications</p>
                         </div>
                     ) : (
                         notifications.filter(n => n.recipient === currentUser.username).map(n => (
-                            <div key={n.id} className={`p-4 rounded-2xl border transition-all ${n.read ? 'bg-white/5 border-white/5 opacity-60' : 'bg-blue-500/5 border-blue-500/20'}`}>
+                            <div key={n.id} className={`p-4 rounded-2xl border transition-all ${n.read ? 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/5 opacity-60' : 'bg-blue-50 dark:bg-blue-500/5 border-blue-200 dark:border-blue-500/20'}`}>
                                 <div className="flex items-start gap-3">
                                     <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${n.status === VisitorStatus.APPROVED ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
                                     <div>
-                                        <p className="text-xs font-medium text-white/90 leading-relaxed">{n.message}</p>
-                                        <p className="text-[9px] text-white/30 mt-2 font-bold uppercase tracking-widest">
+                                        <p className="text-xs font-medium text-slate-700 dark:text-white/90 leading-relaxed">{n.message}</p>
+                                        <p className="text-[9px] text-slate-400 dark:text-white/30 mt-2 font-bold uppercase tracking-widest">
                                             {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                     </div>
@@ -682,7 +682,7 @@ export const StaffSharePass = () => {
     const visitor = getVisitorByCode(id || '');
 
     if (!visitor) return (
-      <div className="flex flex-col items-center justify-center h-screen text-white p-4">
+      <div className="flex flex-col items-center justify-center h-screen text-slate-900 dark:text-white p-4">
           <p>Visitor record not found.</p>
           <Button onClick={() => navigate('/staff/dashboard')} className="mt-4">Back to Dashboard</Button>
       </div>
@@ -758,30 +758,30 @@ export const StaffSharePass = () => {
             <Toast show={toast.show} message={toast.message} onHide={() => setToast({ ...toast, show: false })} />
 
             <div className="flex items-center justify-between mb-6">
-                <button onClick={() => navigate('/staff/dashboard')} className="w-10 h-10 rounded-full bg-[#1E1E2E] border border-white/5 flex items-center justify-center text-white/70 hover:text-white">
+                <button onClick={() => navigate('/staff/dashboard')} className="w-10 h-10 rounded-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/70 hover:text-slate-900 dark:hover:text-white transition-colors">
                     <ArrowLeft size={20} />
                 </button>
-                <h2 className="text-white font-bold">Review Invitation</h2>
+                <h2 className="text-slate-900 dark:text-white font-bold">Review Invitation</h2>
                 <div className="w-10"></div>
             </div>
             
             <GlassCard className="text-center relative !p-0 overflow-hidden pb-6 mb-4">
-                <div className="bg-[#252530] p-6 border-b border-white/5">
+                <div className="bg-slate-50 dark:bg-[#252530] p-6 border-b border-slate-200 dark:border-white/5">
                     <div className="flex justify-center mb-4">
                         <StatusBadge status={visitor.status} />
                     </div>
-                    <h2 className="text-2xl font-bold text-white mb-1">{visitor.name}</h2>
-                    <p className="text-white/50 text-sm flex items-center justify-center gap-2">
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{visitor.name}</h2>
+                    <p className="text-slate-500 dark:text-white/50 text-sm flex items-center justify-center gap-2">
                         Guest Invite • <span className="flex items-center gap-1">{visitor.transportMode === TransportMode.CAR ? <Car size={14}/> : <div className="flex items-center gap-0.5"><UserIcon size={14}/><Bike size={14}/></div>} {visitor.transportMode === TransportMode.CAR ? 'Car' : 'Walk-in / Bike'}</span>
                     </p>
                 </div>
                 
                 <div className="p-6">
                     {/* Unique Code Display */}
-                    <div className="bg-[#121217] rounded-2xl p-4 mb-6 relative group cursor-pointer" onClick={handleCopyCode}>
-                        <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1 font-bold">Unique Access Code</p>
-                        <p className="text-4xl font-mono font-bold text-white tracking-[0.2em] group-hover:text-blue-400 transition-colors">{visitor.id}</p>
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 group-hover:text-white/50 transition-colors">
+                    <div className="bg-slate-100 dark:bg-[#121217] rounded-2xl p-4 mb-6 relative group cursor-pointer" onClick={handleCopyCode}>
+                        <p className="text-[10px] text-slate-400 dark:text-white/30 uppercase tracking-widest mb-1 font-bold">Unique Access Code</p>
+                        <p className="text-4xl font-mono font-bold text-slate-900 dark:text-white tracking-[0.2em] group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">{visitor.id}</p>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-white/20 group-hover:text-slate-500 dark:group-hover:text-white/50 transition-colors">
                             {copied ? <Check size={20} className="text-green-500"/> : <Copy size={20}/>}
                         </div>
                     </div>
@@ -789,7 +789,7 @@ export const StaffSharePass = () => {
                     <div className="animate-in zoom-in duration-500">
                         {visitor.qrType !== QRType.NONE ? (
                             <>
-                                <div className={`p-4 bg-white rounded-2xl mx-auto w-fit mb-6 ${visitor.status === VisitorStatus.PENDING ? "opacity-60 grayscale" : ""}`}>
+                                <div className={`p-4 bg-white rounded-2xl mx-auto w-fit mb-6 shadow-xl border border-slate-100 ${visitor.status === VisitorStatus.PENDING ? "opacity-60 grayscale" : ""}`}>
                                     <QRCodeDisplay 
                                         value={visitor.id} 
                                         type={visitor.qrType} 
@@ -799,7 +799,7 @@ export const StaffSharePass = () => {
                                 <div className="grid grid-cols-2 gap-3 mb-4">
                                     <Button 
                                         variant="secondary" 
-                                        className="text-xs py-3 flex items-center justify-center gap-2 bg-[#252530] hover:bg-[#303040]"
+                                        className="text-xs py-3 flex items-center justify-center gap-2 bg-slate-100 dark:bg-[#252530] hover:bg-slate-200 dark:hover:bg-[#303040] text-slate-700 dark:text-white border-none"
                                         onClick={handleDownload}
                                         loading={isSaving}
                                     >
@@ -816,23 +816,23 @@ export const StaffSharePass = () => {
                                 </div>
                             </>
                         ) : (
-                            <div className="p-8 bg-blue-500/10 rounded-3xl border border-blue-500/20 mb-6">
-                                <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400 mx-auto mb-4">
+                            <div className="p-8 bg-blue-100 dark:bg-blue-500/10 rounded-3xl border border-blue-200 dark:border-blue-500/20 mb-6">
+                                <div className="w-16 h-16 bg-blue-200 dark:bg-blue-500/20 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mx-auto mb-4">
                                     <ShieldCheck size={32} />
                                 </div>
-                                <h3 className="text-white font-bold text-lg mb-2">LPR Activated</h3>
-                                <p className="text-blue-200/60 text-sm mb-4">
+                                <h3 className="text-slate-900 dark:text-white font-bold text-lg mb-2">LPR Activated</h3>
+                                <p className="text-blue-700 dark:text-blue-200/60 text-sm mb-4">
                                     Guest vehicle entry via LPR. No QR required for this invite.
                                 </p>
-                                <div className="bg-white/5 p-3 rounded-xl border border-white/10 font-mono text-blue-400 font-bold tracking-widest text-xl uppercase">
+                                <div className="bg-white/50 dark:bg-white/5 p-3 rounded-xl border border-blue-200 dark:border-white/10 font-mono text-blue-600 dark:text-blue-400 font-bold tracking-widest text-xl uppercase">
                                     {visitor.licensePlate}
                                 </div>
-                                <p className="text-[10px] text-white/20 uppercase tracking-widest mt-4 font-bold">Gate Access Only</p>
+                                <p className="text-[10px] text-slate-400 dark:text-white/20 uppercase tracking-widest mt-4 font-bold">Gate Access Only</p>
                             </div>
                         )}
 
                         {visitor.status === VisitorStatus.PENDING && (
-                            <p className="text-xs text-yellow-500/80 bg-yellow-500/10 p-3 rounded-xl border border-yellow-500/20 mb-4">
+                            <p className="text-xs text-yellow-600 dark:text-yellow-500/80 bg-yellow-100 dark:bg-yellow-500/10 p-3 rounded-xl border border-yellow-200 dark:border-yellow-500/20 mb-4 font-medium">
                                 <RefreshCw size={12} className="inline mr-1 animate-spin"/> Awaiting admin approval before activation.
                             </p>
                         )}
@@ -841,33 +841,33 @@ export const StaffSharePass = () => {
             </GlassCard>
 
             {visitor.transportMode === TransportMode.CAR && (
-                <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-center gap-4 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400 shrink-0">
+                <div className="mt-4 p-4 bg-yellow-100 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-2xl flex items-center gap-4 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-yellow-200 dark:bg-yellow-500/20 flex items-center justify-center text-yellow-600 dark:text-yellow-400 shrink-0">
                         <Car size={20} />
                     </div>
                     <div>
-                        <p className="text-yellow-200 font-bold text-sm">LPR Enabled</p>
-                        <p className="text-yellow-200/60 text-xs mt-0.5">
-                            Guest gate opens for <span className="font-mono text-white/90 bg-white/10 px-1 rounded">{visitor.licensePlate}</span>
+                        <p className="text-yellow-800 dark:text-yellow-200 font-bold text-sm">LPR Enabled</p>
+                        <p className="text-yellow-700 dark:text-yellow-200/60 text-xs mt-0.5">
+                            Guest gate opens for <span className="font-mono text-slate-900 dark:text-white/90 bg-white/20 dark:bg-white/10 px-1 rounded">{visitor.licensePlate}</span>
                         </p>
                     </div>
                 </div>
             )}
 
-            <div className="p-6 bg-[#121217] rounded-3xl border border-white/5 animate-in slide-in-from-bottom-2 duration-700">
-                <h3 className="text-xs font-bold text-white/30 uppercase tracking-[0.2em] mb-4">Staff Summary</h3>
+            <div className="p-6 bg-white dark:bg-[#121217] rounded-3xl border border-slate-200 dark:border-white/5 animate-in slide-in-from-bottom-2 duration-700">
+                <h3 className="text-xs font-bold text-slate-400 dark:text-white/30 uppercase tracking-[0.2em] mb-4">Staff Summary</h3>
                 <div className="space-y-4">
                     <div className="flex gap-4">
-                        <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">1</div>
-                        <p className="text-xs text-white/60 leading-relaxed">Share the access link or the QR image with your guest.</p>
+                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">1</div>
+                        <p className="text-xs text-slate-600 dark:text-white/60 leading-relaxed">Share the access link or the QR image with your guest.</p>
                     </div>
                     <div className="flex gap-4">
-                        <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">2</div>
-                        <p className="text-xs text-white/60 leading-relaxed">The guest's visit is valid from <span className="text-white font-bold">{new Date(visitor.visitDate).toLocaleDateString()}</span>.</p>
+                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">2</div>
+                        <p className="text-xs text-slate-600 dark:text-white/60 leading-relaxed">The guest's visit is valid from <span className="text-slate-900 dark:text-white font-bold">{new Date(visitor.visitDate).toLocaleDateString()}</span>.</p>
                     </div>
                     <div className="flex gap-4">
-                        <div className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">3</div>
-                        <p className="text-xs text-white/60 leading-relaxed">You will receive a notification once the admin approves this guest.</p>
+                        <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-bold shrink-0">3</div>
+                        <p className="text-xs text-slate-600 dark:text-white/60 leading-relaxed">You will receive a notification once the admin approves this guest.</p>
                     </div>
                 </div>
             </div>

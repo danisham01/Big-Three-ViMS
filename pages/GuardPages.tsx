@@ -1,10 +1,32 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
-import { GlassCard, Button, Input, Spinner, ConfirmModal } from '../components/GlassComponents';
-import { VisitorStatus, QRType, UserRole } from '../types';
-import { Scan, AlertTriangle, Unlock, LogOut, CheckCircle2, ShieldAlert, Ban, UserCheck } from 'lucide-react';
+import { GlassCard, Button, Input, Spinner, ConfirmModal, VisitorCardSkeleton } from '../components/GlassComponents';
+import { EntryAnalytics } from '../components/EntryAnalytics';
+import { VisitorStatus, QRType, UserRole, TransportMode } from '../types';
+import { Scan, AlertTriangle, Unlock, LogOut, CheckCircle2, ShieldAlert, Ban, UserCheck, Crown, User, Clock } from 'lucide-react';
+
+const LiveDuration = ({ startTime }: { startTime: string }) => {
+  const [duration, setDuration] = useState('');
+  useEffect(() => {
+    const calc = () => {
+       const start = new Date(startTime).getTime();
+       const now = Date.now();
+       const diff = now - start;
+       if (diff < 0) return 'Just entered';
+       const mins = Math.floor(diff / 60000);
+       if (mins < 60) return `${mins}m`;
+       const hrs = Math.floor(mins / 60);
+       const m = mins % 60;
+       return `${hrs}h ${m}m`;
+    };
+    setDuration(calc());
+    const interval = setInterval(() => setDuration(calc()), 60000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+  return <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{duration}</span>;
+}
 
 const AccessPoint = ({ name, type, allowedQRs, allowLPR }: { 
     name: string, 
@@ -90,33 +112,33 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
 
     // Determine border color based on status
     const getBorderClass = () => {
-        if (!message) return 'border-white/5';
+        if (!message) return 'border-slate-200 dark:border-white/5';
         if (message.type === 'success') return 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)]';
         if (message.type === 'error') return 'border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.1)]';
         if (message.type === 'blacklist') return 'border-red-600 shadow-[0_0_25px_rgba(220,38,38,0.4)] animate-pulse';
-        return 'border-white/5';
+        return 'border-slate-200 dark:border-white/5';
     };
 
     return (
         <GlassCard className={`h-full flex flex-col group transition-all duration-500 border-2 ${getBorderClass()}`}>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-2xl ${type === 'FRONT_GATE' ? 'bg-blue-500/10 text-blue-400' : 'bg-orange-500/10 text-orange-400'} group-hover:scale-110 transition-transform duration-500`}>
+                    <div className={`p-3 rounded-2xl ${type === 'FRONT_GATE' ? 'bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400'} group-hover:scale-110 transition-transform duration-500`}>
                         <Scan size={24} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-white text-lg">{name}</h3>
-                        <p className="text-[10px] text-white/30 uppercase tracking-widest">Scanning Point</p>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-lg">{name}</h3>
+                        <p className="text-[10px] text-slate-500 dark:text-white/30 uppercase tracking-widest">Scanning Point</p>
                     </div>
                 </div>
                 {message && (
                     <div className={`animate-in fade-in zoom-in duration-300`}>
                          {message.type === 'success' ? (
-                             <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                             <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                                  <CheckCircle2 size={18} />
                              </div>
                          ) : (
-                             <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400">
+                             <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400">
                                  {message.type === 'blacklist' ? <Ban size={18} /> : <ShieldAlert size={18} />}
                              </div>
                          )}
@@ -149,19 +171,19 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
                     {isLoading ? 'Verifying...' : 'Simulate Scan'}
                 </Button>
 
-                <div className="h-20 flex items-center justify-center">
+                <div className="h-16 flex items-center justify-center">
                     {message && (
-                        <div className={`w-full p-4 rounded-2xl text-[11px] font-black text-center animate-in fade-in slide-in-from-top-2 border flex flex-col items-center justify-center gap-1 ${
-                            message.type === 'success' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20' :
-                            message.type === 'blacklist' ? 'bg-red-900/40 text-red-400 border-red-600 animate-pulse' :
-                            'bg-red-500/10 text-red-300 border-red-500/20'
+                        <div className={`w-full p-4 rounded-2xl text-[11px] font-black text-center animate-in fade-in slide-in-from-top-2 border flex items-center justify-center gap-2 ${
+                            message.type === 'success' ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/20' :
+                            message.type === 'blacklist' ? 'bg-red-900/40 text-red-200 dark:text-red-400 border-red-600 animate-pulse' :
+                            'bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-300 border-red-200 dark:border-red-500/20'
                         }`}>
                             <div className="flex items-center gap-2">
                                {message.type === 'success' ? <CheckCircle2 size={16} /> : <Ban size={16} />}
                                <span className="uppercase tracking-wider">{message.text}</span>
                             </div>
                             {message.type === 'success' && message.host && (
-                                <div className="flex items-center gap-1.5 mt-1 text-[9px] text-emerald-400/60 uppercase tracking-widest font-black">
+                                <div className="flex items-center gap-1.5 mt-1 text-[9px] text-emerald-600 dark:text-emerald-400/60 uppercase tracking-widest font-black">
                                     <UserCheck size={12} /> Host: {message.host}
                                 </div>
                             )}
@@ -175,7 +197,7 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
 
 export const GuardConsole = () => {
     const navigate = useNavigate();
-    const { logAccess, currentUser, logout } = useStore();
+    const { logAccess, currentUser, logout, visitors, vipRecords } = useStore();
     const [manualCode, setManualCode] = useState('');
     const [isReleasing, setIsReleasing] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -185,6 +207,34 @@ export const GuardConsole = () => {
             navigate('/staff/login');
         }
     }, [currentUser, navigate]);
+
+    const liveVisitors = useMemo(() => {
+        // 1. Regular Visitors: timeIn exists, timeOut does not
+        const regular = visitors.filter(v => v.timeIn && !v.timeOut).map(v => ({
+            id: v.id,
+            name: v.name,
+            type: 'VISITOR',
+            plate: v.licensePlate,
+            transport: v.transportMode,
+            entryTime: v.timeIn!,
+            isVip: false
+        }));
+    
+        // 2. VIPs: lastEntryTime exists, and (lastExitTime missing OR entry > exit)
+        const vips = vipRecords.filter(v => 
+            v.lastEntryTime && (!v.lastExitTime || new Date(v.lastEntryTime) > new Date(v.lastExitTime))
+        ).map(v => ({
+            id: v.id,
+            name: v.name,
+            type: v.vipType,
+            plate: v.licensePlate,
+            transport: TransportMode.CAR, // VIPs typically use cars
+            entryTime: v.lastEntryTime!,
+            isVip: true
+        }));
+    
+        return [...vips, ...regular].sort((a, b) => new Date(b.entryTime).getTime() - new Date(a.entryTime).getTime());
+    }, [visitors, vipRecords]);
 
     if (!currentUser) return null;
 
@@ -214,13 +264,13 @@ export const GuardConsole = () => {
 
              <div className="flex items-center justify-between mb-8 mt-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">Security Terminal</h1>
-                    <p className="text-white/40 text-sm flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Security Terminal</h1>
+                    <p className="text-slate-500 dark:text-white/40 text-sm flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                         Active Session: {currentUser.fullName}
                     </p>
                 </div>
-                <button onClick={() => setShowLogoutConfirm(true)} className="p-3.5 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white hover:bg-white/10 transition-all">
+                <button onClick={() => setShowLogoutConfirm(true)} className="p-3.5 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/40 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-all">
                     <LogOut size={20} />
                 </button>
             </div>
@@ -230,14 +280,14 @@ export const GuardConsole = () => {
                 <AccessPoint name="Service Lift" type="ELEVATOR" allowedQRs={[QRType.QR2, QRType.QR3]} allowLPR={false} />
             </div>
 
-            <GlassCard className="bg-red-900/5 border-red-500/20 !p-8">
+            <GlassCard className="bg-red-50 dark:bg-red-900/5 border-red-200 dark:border-red-500/20 !p-8 mb-8">
                 <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-500">
+                    <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-500/10 flex items-center justify-center text-red-500">
                         <AlertTriangle size={24} />
                     </div>
                     <div>
-                        <h3 className="font-bold text-white text-md uppercase tracking-wider">Manual Override</h3>
-                        <p className="text-red-500/60 text-[10px] font-bold uppercase tracking-widest">Emergency Gate Release</p>
+                        <h3 className="font-bold text-slate-900 dark:text-white text-md uppercase tracking-wider">Manual Override</h3>
+                        <p className="text-red-600/60 dark:text-red-500/60 text-[10px] font-bold uppercase tracking-widest">Emergency Gate Release</p>
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-4">
@@ -262,6 +312,66 @@ export const GuardConsole = () => {
                     </Button>
                 </div>
             </GlassCard>
+
+            {/* Entry Analytics Section */}
+            <EntryAnalytics />
+
+            {/* On-Going Visitors Section for Guard */}
+            <section className="mb-12">
+                <div className="flex items-center gap-2 mb-5">
+                    <div className="w-1.5 h-4 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                    <h3 className="text-xs font-bold text-slate-700 dark:text-white/90 uppercase tracking-[0.2em]">On-Going Visitors</h3>
+                    {liveVisitors.length > 0 && (
+                        <span className="ml-auto bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-500/20 animate-pulse">
+                            {liveVisitors.length} LIVE
+                        </span>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {liveVisitors.length === 0 ? (
+                        <div className="col-span-full text-center py-8 bg-white/50 dark:bg-[#1E1E2E]/30 rounded-3xl border border-dashed border-slate-200 dark:border-white/5">
+                            <p className="text-xs text-slate-400 dark:text-white/30 font-medium tracking-wide">No visitors currently inside the premise.</p>
+                        </div>
+                    ) : (
+                        liveVisitors.map((item, idx) => (
+                            <div 
+                            key={idx}
+                            className="group relative overflow-hidden rounded-3xl border border-emerald-100 dark:border-emerald-500/20 bg-white dark:bg-[#1E1E2E] p-5 shadow-lg transition-all duration-300 hover:scale-[1.01]"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg font-black ${item.isVip ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-600' : 'bg-blue-100 dark:bg-blue-500/10 text-blue-600'}`}>
+                                            {item.isVip ? <Crown size={18} /> : <User size={18} />}
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">{item.name}</h3>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                {item.isVip && <span className="text-[9px] font-black bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-500/30">VIP</span>}
+                                                {item.plate ? (
+                                                    <span className="font-mono text-[10px] font-bold bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-slate-600 dark:text-white/80">{item.plate}</span>
+                                                ) : (
+                                                    <span className="text-[9px] font-bold text-slate-400 dark:text-white/40 uppercase">Walk-in</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="flex items-center justify-end gap-1.5 mb-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">IN PREMISE</span>
+                                        </div>
+                                        <div className="flex items-center justify-end gap-1 text-[10px] text-slate-500 dark:text-white/50">
+                                            <Clock size={12} />
+                                            <LiveDuration startTime={item.entryTime} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </section>
         </div>
     );
 };

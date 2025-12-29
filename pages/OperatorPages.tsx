@@ -3,8 +3,31 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { GlassCard, Button, StatusBadge, Skeleton, VisitorCardSkeleton, HistoryItemSkeleton, Input, Toast, ConfirmModal } from '../components/GlassComponents';
-import { VisitorStatus, Visitor, UserRole, TransportMode } from '../types';
-import { CheckCircle, XCircle, Filter, User, Clock, Briefcase, LogOut, Search, Car, User as UserIcon, ListFilter, X, Calendar, ArrowRight, AlertCircle, Send, BellRing, Bike, Phone, Mail, CreditCard, ExternalLink, CalendarDays, MapPin, Hash, UserCheck } from 'lucide-react';
+import { EntryAnalytics } from '../components/EntryAnalytics';
+import { VisitorStatus, Visitor, UserRole, TransportMode, VipRecord, VipType } from '../types';
+import { VipDetailModal } from './VipPages';
+import { CheckCircle, XCircle, Filter, User, Clock, Briefcase, LogOut, Search, Car, User as UserIcon, ListFilter, X, Calendar, ArrowRight, AlertCircle, Send, BellRing, Bike, Phone, Mail, CreditCard, ExternalLink, CalendarDays, MapPin, Hash, UserCheck, Crown, ShieldCheck } from 'lucide-react';
+
+const LiveDuration = ({ startTime }: { startTime: string }) => {
+  const [duration, setDuration] = useState('');
+  useEffect(() => {
+    const calc = () => {
+       const start = new Date(startTime).getTime();
+       const now = Date.now();
+       const diff = now - start;
+       if (diff < 0) return 'Just entered';
+       const mins = Math.floor(diff / 60000);
+       if (mins < 60) return `${mins}m`;
+       const hrs = Math.floor(mins / 60);
+       const m = mins % 60;
+       return `${hrs}h ${m}m`;
+    };
+    setDuration(calc());
+    const interval = setInterval(() => setDuration(calc()), 60000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+  return <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">{duration}</span>;
+}
 
 // New Component: Detailed Visitor Modal
 const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: { 
@@ -40,10 +63,10 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
-      <div className="max-w-md w-full max-h-[90vh] overflow-y-auto no-scrollbar bg-[#121217] border border-white/10 rounded-[2.5rem] shadow-[0_32px_64px_rgba(0,0,0,0.5)] flex flex-col relative animate-in zoom-in-95 duration-300">
+      <div className="max-w-md w-full max-h-[90vh] overflow-y-auto no-scrollbar bg-white dark:bg-[#121217] border border-slate-200 dark:border-white/10 rounded-[2.5rem] shadow-[0_32px_64px_rgba(0,0,0,0.5)] flex flex-col relative animate-in zoom-in-95 duration-300 transition-colors">
         
         {/* Header/Close */}
-        <button onClick={onClose} className="absolute top-6 right-6 z-20 w-10 h-10 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors">
+        <button onClick={onClose} className="absolute top-6 right-6 z-20 w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/40 hover:bg-slate-200 dark:hover:text-white transition-colors">
           <X size={20} />
         </button>
 
@@ -51,14 +74,14 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
         <div className="p-8 pb-4 text-center">
           <div className="relative inline-block mb-4">
             <div className="w-24 h-24 rounded-[2rem] bg-gradient-to-tr from-blue-500 to-indigo-600 p-1 overflow-hidden shadow-2xl">
-              <img src={visitor.icPhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${visitor.name}`} alt="" className="w-full h-full rounded-[1.8rem] bg-[#1E1E2E] object-cover" />
+              <img src={visitor.icPhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${visitor.name}`} alt="" className="w-full h-full rounded-[1.8rem] bg-white dark:bg-[#1E1E2E] object-cover" />
             </div>
             <div className="absolute -bottom-1 -right-1">
               <StatusBadge status={visitor.status} />
             </div>
           </div>
-          <h2 className="text-2xl font-black text-white">{visitor.name}</h2>
-          <p className="text-white/30 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">Ref: {visitor.id}</p>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white">{visitor.name}</h2>
+          <p className="text-slate-500 dark:text-white/30 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">Ref: {visitor.id}</p>
         </div>
 
         {/* Detail Sections */}
@@ -67,11 +90,11 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
           {/* Section: Origin/Registration */}
           <div className="space-y-3">
             <h3 className="text-[10px] font-black text-purple-500 uppercase tracking-widest px-1">Source Information</h3>
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400"><UserCheck size={18} /></div>
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400"><UserCheck size={18} /></div>
                 <div>
-                   <p className="text-[10px] text-white/30 font-bold uppercase">Registered By</p>
-                   <p className="text-sm font-bold text-white/90">{visitor.registeredBy === 'SELF' ? 'Self Registered' : `Staff: ${visitor.registeredBy}`}</p>
+                   <p className="text-[10px] text-slate-500 dark:text-white/30 font-bold uppercase">Registered By</p>
+                   <p className="text-sm font-bold text-slate-900 dark:text-white/90">{visitor.registeredBy === 'SELF' ? 'Self Registered' : `Staff: ${visitor.registeredBy}`}</p>
                 </div>
             </div>
           </div>
@@ -79,20 +102,20 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
           {/* Section: Identity */}
           <div className="space-y-3">
             <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-widest px-1">Identity Information</h3>
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-4">
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl p-4 space-y-4">
                <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40"><CreditCard size={18} /></div>
+                 <div className="w-10 h-10 rounded-xl bg-white/50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-white/40"><CreditCard size={18} /></div>
                  <div>
-                   <p className="text-[10px] text-white/30 font-bold uppercase">NRIC / Passport No.</p>
-                   <p className="text-sm font-bold text-white/90">{visitor.icNumber || 'N/A'}</p>
+                   <p className="text-[10px] text-slate-500 dark:text-white/30 font-bold uppercase">NRIC / Passport No.</p>
+                   <p className="text-sm font-bold text-slate-900 dark:text-white/90">{visitor.icNumber || 'N/A'}</p>
                  </div>
                </div>
                {visitor.staffNumber && (
                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40"><Hash size={18} /></div>
+                    <div className="w-10 h-10 rounded-xl bg-white/50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-white/40"><Hash size={18} /></div>
                     <div>
-                      <p className="text-[10px] text-white/30 font-bold uppercase">Staff Number</p>
-                      <p className="text-sm font-bold text-white/90">{visitor.staffNumber}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-white/30 font-bold uppercase">Staff Number</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white/90">{visitor.staffNumber}</p>
                     </div>
                  </div>
                )}
@@ -102,22 +125,22 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
           {/* Section: Contact */}
           <div className="space-y-3">
             <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest px-1">Contact Details</h3>
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 space-y-4">
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl p-4 space-y-4">
                <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40"><Phone size={18} /></div>
+                 <div className="w-10 h-10 rounded-xl bg-white/50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-white/40"><Phone size={18} /></div>
                  <div className="flex-1">
-                   <p className="text-[10px] text-white/30 font-bold uppercase">Phone Number</p>
-                   <p className="text-sm font-bold text-white/90">{visitor.contact}</p>
+                   <p className="text-[10px] text-slate-500 dark:text-white/30 font-bold uppercase">Phone Number</p>
+                   <p className="text-sm font-bold text-slate-900 dark:text-white/90">{visitor.contact}</p>
                  </div>
                </div>
                {visitor.email && (
                  <>
-                  <div className="h-[1px] bg-white/5 w-full"></div>
+                  <div className="h-[1px] bg-slate-200 dark:bg-white/5 w-full"></div>
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40"><Mail size={18} /></div>
+                    <div className="w-10 h-10 rounded-xl bg-white/50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-white/40"><Mail size={18} /></div>
                     <div className="flex-1">
-                      <p className="text-[10px] text-white/30 font-bold uppercase">Email Address</p>
-                      <p className="text-sm font-bold text-white/90 truncate">{visitor.email}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-white/30 font-bold uppercase">Email Address</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white/90 truncate">{visitor.email}</p>
                     </div>
                   </div>
                  </>
@@ -128,54 +151,54 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
           {/* Section: Visit Schedule */}
           <div className="space-y-3">
             <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest px-1">Schedule & Purpose</h3>
-            <div className="bg-white/5 border border-white/5 rounded-2xl p-5 space-y-5">
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl p-5 space-y-5">
                <div className="flex gap-4">
                   <div className="flex flex-col items-center gap-1">
                     <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                    <div className="w-0.5 flex-1 bg-white/5 min-h-[1rem]"></div>
-                    <div className="w-2 h-2 rounded-full bg-white/20"></div>
+                    <div className="w-0.5 flex-1 bg-slate-300 dark:bg-white/5 min-h-[1rem]"></div>
+                    <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-white/20"></div>
                   </div>
                   <div className="flex-1 space-y-4">
                     <div>
-                      <p className="text-[9px] text-white/30 font-bold uppercase">Start Access</p>
-                      <p className="text-xs font-bold text-white/80">{formatDate(visitor.visitDate)}</p>
+                      <p className="text-[9px] text-slate-500 dark:text-white/30 font-bold uppercase">Start Access</p>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white/80">{formatDate(visitor.visitDate)}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] text-white/30 font-bold uppercase">Expected End</p>
-                      <p className="text-xs font-bold text-white/80">{visitor.endDate ? formatDate(visitor.endDate) : 'Standard Duration'}</p>
+                      <p className="text-[9px] text-slate-500 dark:text-white/30 font-bold uppercase">Expected End</p>
+                      <p className="text-xs font-bold text-slate-900 dark:text-white/80">{visitor.endDate ? formatDate(visitor.endDate) : 'Standard Duration'}</p>
                     </div>
                   </div>
                </div>
 
-               <div className="h-[1px] bg-white/5 w-full"></div>
+               <div className="h-[1px] bg-slate-200 dark:bg-white/5 w-full"></div>
 
                <div className="flex items-start gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 shrink-0"><Briefcase size={18} /></div>
+                 <div className="w-10 h-10 rounded-xl bg-white/50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-white/40 shrink-0"><Briefcase size={18} /></div>
                  <div className="flex-1">
-                   <p className="text-[10px] text-white/30 font-bold uppercase">Purpose of Visit</p>
-                   <p className="text-xs font-bold text-white/90">{visitor.purpose}</p>
+                   <p className="text-[10px] text-slate-500 dark:text-white/30 font-bold uppercase">Purpose of Visit</p>
+                   <p className="text-xs font-bold text-slate-900 dark:text-white/90">{visitor.purpose}</p>
                    {visitor.dropOffArea && (
-                     <p className="text-[10px] text-blue-400 font-medium mt-1">Area: {visitor.dropOffArea}</p>
+                     <p className="text-[10px] text-blue-500 dark:text-blue-400 font-medium mt-1">Area: {visitor.dropOffArea}</p>
                    )}
                    {visitor.specifiedLocation && (
-                     <p className="text-[10px] text-emerald-400 font-medium mt-1">Location: {visitor.specifiedLocation}</p>
+                     <p className="text-[10px] text-emerald-500 dark:text-emerald-400 font-medium mt-1">Location: {visitor.specifiedLocation}</p>
                    )}
                    {visitor.location && (
-                     <p className="text-[10px] text-indigo-400 font-medium mt-1">Facility: {visitor.location}</p>
+                     <p className="text-[10px] text-indigo-500 dark:text-indigo-400 font-medium mt-1">Facility: {visitor.location}</p>
                    )}
                  </div>
                </div>
 
                <div className="flex items-start gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 shrink-0">
+                 <div className="w-10 h-10 rounded-xl bg-white/50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-white/40 shrink-0">
                     {visitor.transportMode === TransportMode.CAR ? <Car size={18} /> : <Bike size={18} />}
                  </div>
                  <div>
-                   <p className="text-[10px] text-white/30 font-bold uppercase">Transportation</p>
+                   <p className="text-[10px] text-slate-500 dark:text-white/30 font-bold uppercase">Transportation</p>
                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs font-bold text-white/90">{visitor.transportMode === TransportMode.CAR ? 'Private Vehicle' : 'Walk-in / Bike'}</span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white/90">{visitor.transportMode === TransportMode.CAR ? 'Private Vehicle' : 'Walk-in / Bike'}</span>
                       {visitor.licensePlate && (
-                        <span className="bg-white/10 px-2 py-0.5 rounded font-mono text-[10px] text-blue-400 font-black">{visitor.licensePlate}</span>
+                        <span className="bg-slate-200 dark:bg-white/10 px-2 py-0.5 rounded font-mono text-[10px] text-blue-600 dark:text-blue-400 font-black">{visitor.licensePlate}</span>
                       )}
                    </div>
                  </div>
@@ -185,14 +208,14 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
 
           {/* Action Footer */}
           {visitor.status === VisitorStatus.PENDING && (
-            <div className="flex flex-col gap-3 pt-4 border-t border-white/5">
+            <div className="flex flex-col gap-3 pt-4 border-t border-slate-200 dark:border-white/5">
               {showRejectInput && (
                 <div className="animate-in slide-in-from-top-2">
                    <Input 
                       placeholder="Enter rejection reason..."
                       value={rejectionReason}
                       onChange={(e) => setRejectionReason(e.target.value)}
-                      className="!py-3 !text-xs !bg-red-500/5 !text-red-200 border-red-500/20 focus:ring-red-500/10 !mb-0"
+                      className="!py-3 !text-xs !bg-red-50 dark:!bg-red-500/5 text-red-700 dark:!text-red-200 border-red-200 dark:border-red-500/20 focus:ring-red-500/10 !mb-0"
                       autoFocus
                    />
                 </div>
@@ -200,7 +223,7 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
               <div className="flex gap-3">
                 <button 
                   onClick={handleReject}
-                  className={`flex-1 py-4 rounded-2xl border transition-all duration-300 text-xs font-black uppercase tracking-widest ${showRejectInput ? 'bg-red-600 text-white border-red-500' : 'border-red-500/20 text-red-500/60 hover:bg-red-500/10'}`}
+                  className={`flex-1 py-4 rounded-2xl border transition-all duration-300 text-xs font-black uppercase tracking-widest ${showRejectInput ? 'bg-red-600 text-white border-red-500' : 'border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-500/60 hover:bg-red-50 dark:hover:bg-red-500/10'}`}
                 >
                   {showRejectInput ? 'Confirm Deny' : 'Decline'}
                 </button>
@@ -223,13 +246,14 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
 
 export const OperatorDashboard = () => {
   const navigate = useNavigate();
-  const { visitors, updateVisitorStatus, currentUser, logout } = useStore();
+  const { visitors, updateVisitorStatus, currentUser, logout, vipRecords, deactivateVip, updateVip } = useStore();
   const [initialLoading, setInitialLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [toast, setToast] = useState({ show: false, message: '' });
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   const [selectedVisitor, setSelectedVisitor] = useState<Visitor | null>(null);
+  const [selectedVip, setSelectedVip] = useState<VipRecord | null>(null);
   const [statusFilter, setStatusFilter] = useState<VisitorStatus | 'ALL'>('ALL');
   const [transportFilter, setTransportFilter] = useState<TransportMode | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -257,6 +281,36 @@ export const OperatorDashboard = () => {
   const pendingVisitors = useMemo(() => {
     return visitors.filter(v => v.status === VisitorStatus.PENDING && filterBySearch(v));
   }, [visitors, searchQuery]);
+
+  const liveVisitors = useMemo(() => {
+    // 1. Regular Visitors: timeIn exists, timeOut does not
+    const regular = visitors.filter(v => v.timeIn && !v.timeOut).map(v => ({
+        id: v.id,
+        name: v.name,
+        type: 'VISITOR',
+        plate: v.licensePlate,
+        transport: v.transportMode,
+        entryTime: v.timeIn!,
+        isVip: false,
+        record: v
+    }));
+
+    // 2. VIPs: lastEntryTime exists, and (lastExitTime missing OR entry > exit)
+    const vips = vipRecords.filter(v => 
+        v.lastEntryTime && (!v.lastExitTime || new Date(v.lastEntryTime) > new Date(v.lastExitTime))
+    ).map(v => ({
+        id: v.id,
+        name: v.name,
+        type: v.vipType,
+        plate: v.licensePlate,
+        transport: TransportMode.CAR, // VIPs typically use cars
+        entryTime: v.lastEntryTime!,
+        isVip: true,
+        record: v
+    }));
+
+    return [...vips, ...regular].sort((a, b) => new Date(b.entryTime).getTime() - new Date(a.entryTime).getTime());
+  }, [visitors, vipRecords]);
 
   const filteredHistory = useMemo(() => {
     return visitors.filter(v => {
@@ -308,6 +362,14 @@ export const OperatorDashboard = () => {
         onApprove={(id) => handleAction(id, VisitorStatus.APPROVED)}
         onReject={(id, reason) => handleAction(id, VisitorStatus.REJECTED, reason)}
       />
+
+      <VipDetailModal 
+        vip={selectedVip}
+        onClose={() => setSelectedVip(null)}
+        onUpdate={(id, data) => updateVip(id, data, currentUser.username)}
+        onDeactivate={(id) => deactivateVip(id, currentUser.username)}
+        navigate={navigate}
+      />
       
       <div className="flex items-center justify-between mb-8 pt-4">
         <div className="flex items-center gap-3">
@@ -315,11 +377,11 @@ export const OperatorDashboard = () => {
                 <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.username}`} alt="Admin" className="w-full h-full rounded-full bg-white/10" />
              </div>
              <div>
-                 <p className="text-[10px] text-blue-400 font-bold tracking-wider uppercase">{currentUser.role} Console</p>
-                 <h1 className="text-xl font-bold text-white">{currentUser.fullName}</h1>
+                 <p className="text-[10px] text-blue-500 dark:text-blue-400 font-bold tracking-wider uppercase">{currentUser.role} Console</p>
+                 <h1 className="text-xl font-bold text-slate-900 dark:text-white">{currentUser.fullName}</h1>
              </div>
         </div>
-        <button onClick={() => setShowLogoutConfirm(true)} className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500/20 transition-colors">
+        <button onClick={() => setShowLogoutConfirm(true)} className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 flex items-center justify-center text-red-500 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-500/20 transition-colors">
             <LogOut size={20} />
         </button>
       </div>
@@ -332,9 +394,9 @@ export const OperatorDashboard = () => {
           { label: 'Rejected', count: stats.rejected, color: 'red', icon: XCircle }
         ].map((stat, i) => {
           const cardColors = {
-            blue: 'bg-blue-600/20 border-blue-500/40 text-blue-400 shadow-blue-900/10',
-            emerald: 'bg-emerald-600/20 border-emerald-500/40 text-emerald-400 shadow-emerald-900/10',
-            red: 'bg-red-600/20 border-red-500/40 text-red-400 shadow-red-900/10'
+            blue: 'bg-blue-50 dark:bg-blue-600/20 border-blue-200 dark:border-blue-500/40 text-blue-600 dark:text-blue-400 shadow-blue-500/10 dark:shadow-blue-900/10',
+            emerald: 'bg-emerald-50 dark:bg-emerald-600/20 border-emerald-200 dark:border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-emerald-500/10 dark:shadow-emerald-900/10',
+            red: 'bg-red-50 dark:bg-red-600/20 border-red-200 dark:border-red-500/40 text-red-600 dark:text-red-400 shadow-red-500/10 dark:shadow-red-900/10'
           };
           
           return (
@@ -347,9 +409,9 @@ export const OperatorDashboard = () => {
               ) : (
                 <>
                   <div className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">{stat.label}</div>
-                  <div className="text-2xl font-black text-white">{stat.count}</div>
-                  <div className={`absolute -bottom-2 -right-2 opacity-20 rotate-12 transition-transform group-hover:scale-125 duration-500`}>
-                      <stat.icon size={52} className={`text-${stat.color}-400`} />
+                  <div className="text-2xl font-black text-slate-800 dark:text-white">{stat.count}</div>
+                  <div className={`absolute -bottom-2 -right-2 opacity-10 dark:opacity-20 rotate-12 transition-transform group-hover:scale-125 duration-500`}>
+                      <stat.icon size={52} className={`text-${stat.color}-500 dark:text-${stat.color}-400`} />
                   </div>
                 </>
               )}
@@ -359,20 +421,20 @@ export const OperatorDashboard = () => {
       </div>
 
       <div className="mb-8 sticky top-4 z-30">
-        <GlassCard className="!p-2 !bg-[#1E1E2E]/80 backdrop-blur-2xl border-white/10 shadow-2xl">
+        <GlassCard className="!p-2 !bg-white/90 dark:!bg-[#1E1E2E]/80 backdrop-blur-2xl border-slate-200 dark:border-white/10 shadow-2xl">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" size={18} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" size={18} />
             <input 
               type="text" 
               placeholder="Search by name, code, plate, or host..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/5 border border-white/5 rounded-2xl py-3.5 pl-11 pr-11 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-white/20"
+              className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl py-3.5 pl-11 pr-11 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-400 dark:placeholder:text-white/20"
             />
             {searchQuery && (
               <button 
                 onClick={() => setSearchQuery('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white transition-colors"
               >
                 <X size={18} />
               </button>
@@ -383,10 +445,75 @@ export const OperatorDashboard = () => {
 
       <section className="mb-12">
         <div className="flex items-center gap-2 mb-5">
+            <div className="w-1.5 h-4 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+            <h3 className="text-xs font-bold text-slate-700 dark:text-white/90 uppercase tracking-[0.2em]">On-Going Visitors</h3>
+            {!initialLoading && liveVisitors.length > 0 && (
+                <span className="ml-auto bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-500/20 animate-pulse">
+                    {liveVisitors.length} LIVE
+                </span>
+            )}
+        </div>
+
+        <div className="flex flex-col gap-4">
+            {initialLoading ? (
+                <VisitorCardSkeleton />
+            ) : liveVisitors.length === 0 ? (
+                <div className="text-center py-8 bg-white/50 dark:bg-[#1E1E2E]/30 rounded-3xl border border-dashed border-slate-200 dark:border-white/5">
+                    <p className="text-xs text-slate-400 dark:text-white/30 font-medium tracking-wide">No visitors currently inside the premise.</p>
+                </div>
+            ) : (
+                liveVisitors.map((item, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => {
+                          if (item.isVip) setSelectedVip(item.record as VipRecord);
+                          else setSelectedVisitor(item.record as Visitor);
+                      }}
+                      className="group relative overflow-hidden rounded-3xl border border-emerald-100 dark:border-emerald-500/20 bg-white dark:bg-[#1E1E2E] p-5 shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer"
+                    >
+                       <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-4">
+                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black ${item.isVip ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-600' : 'bg-blue-100 dark:bg-blue-500/10 text-blue-600'}`}>
+                                {item.isVip ? <Crown size={20} /> : <User size={20} />}
+                             </div>
+                             <div>
+                                <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">{item.name}</h3>
+                                <div className="flex items-center gap-2 mt-1">
+                                   {item.isVip && <span className="text-[9px] font-black bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-500/30">VIP</span>}
+                                   {item.plate ? (
+                                     <span className="font-mono text-[10px] font-bold bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-slate-600 dark:text-white/80">{item.plate}</span>
+                                   ) : (
+                                     <span className="text-[9px] font-bold text-slate-400 dark:text-white/40 uppercase">Walk-in</span>
+                                   )}
+                                </div>
+                             </div>
+                          </div>
+                          <div className="text-right">
+                             <div className="flex items-center justify-end gap-1.5 mb-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">IN PREMISE</span>
+                             </div>
+                             <div className="flex items-center justify-end gap-1 text-[10px] text-slate-500 dark:text-white/50">
+                                <Clock size={12} />
+                                <LiveDuration startTime={item.entryTime} />
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                ))
+            )}
+        </div>
+      </section>
+
+      {/* Analytics Section */}
+      <EntryAnalytics />
+
+      <section className="mb-12">
+        <div className="flex items-center gap-2 mb-5">
             <div className="w-1.5 h-4 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
-            <h3 className="text-xs font-bold text-white/90 uppercase tracking-[0.2em]">Active Requests</h3>
+            <h3 className="text-xs font-bold text-slate-700 dark:text-white/90 uppercase tracking-[0.2em]">Active Requests</h3>
             {!initialLoading && pendingVisitors.length > 0 && (
-                <span className="ml-auto bg-blue-500/20 text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-blue-500/20">
+                <span className="ml-auto bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-500/20">
                     {pendingVisitors.length} New
                 </span>
             )}
@@ -399,9 +526,9 @@ export const OperatorDashboard = () => {
                 <VisitorCardSkeleton />
               </>
             ) : pendingVisitors.length === 0 ? (
-                <div className="text-center py-12 bg-[#1E1E2E]/30 rounded-3xl border border-dashed border-white/5">
-                    <Clock size={32} className="mx-auto mb-3 text-white/10" />
-                    <p className="text-xs text-white/30 font-medium tracking-wide">
+                <div className="text-center py-12 bg-white/50 dark:bg-[#1E1E2E]/30 rounded-3xl border border-dashed border-slate-200 dark:border-white/5">
+                    <Clock size={32} className="mx-auto mb-3 text-slate-300 dark:text-white/10" />
+                    <p className="text-xs text-slate-400 dark:text-white/30 font-medium tracking-wide">
                         {searchQuery ? 'No pending matches found' : 'All caught up! No active requests.'}
                     </p>
                 </div>
@@ -423,15 +550,15 @@ export const OperatorDashboard = () => {
       <section className="pb-20">
         <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
-                <div className="w-1.5 h-4 bg-white/20 rounded-full"></div>
-                <h3 className="text-xs font-bold text-white/60 uppercase tracking-[0.2em]">Visitor Audit</h3>
+                <div className="w-1.5 h-4 bg-slate-300 dark:bg-white/20 rounded-full"></div>
+                <h3 className="text-xs font-bold text-slate-500 dark:text-white/60 uppercase tracking-[0.2em]">Visitor Audit</h3>
             </div>
-            {!initialLoading && <span className="text-[10px] text-white/20 font-bold uppercase tracking-wider">{filteredHistory.length} Total Records</span>}
+            {!initialLoading && <span className="text-[10px] text-slate-400 dark:text-white/20 font-bold uppercase tracking-wider">{filteredHistory.length} Total Records</span>}
         </div>
 
         <div className="space-y-4 mb-8">
             <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                <div className="p-2 bg-white/5 rounded-xl text-white/30 shrink-0">
+                <div className="p-2 bg-slate-100 dark:bg-white/5 rounded-xl text-slate-400 dark:text-white/30 shrink-0">
                     <Filter size={14} />
                 </div>
                 {[
@@ -446,7 +573,7 @@ export const OperatorDashboard = () => {
                         className={`px-4 py-2.5 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all border ${
                             statusFilter === opt.value 
                             ? 'border-blue-500 bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
-                            : 'border-white/5 bg-[#1E1E2E] text-white/40 hover:bg-white/10'
+                            : 'border-slate-200 dark:border-white/5 bg-white dark:bg-[#1E1E2E] text-slate-500 dark:text-white/40 hover:bg-slate-50 dark:hover:bg-white/10'
                         }`}
                     >
                         {opt.label}
@@ -465,7 +592,7 @@ export const OperatorDashboard = () => {
                         className={`flex-1 flex items-center justify-center gap-2 rounded-xl border py-3 text-[10px] font-bold transition-all ${
                             transportFilter === opt.value 
                             ? 'border-indigo-500 bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
-                            : 'border-white/5 bg-[#1E1E2E] text-white/40 hover:bg-white/10'
+                            : 'border-slate-200 dark:border-white/5 bg-white dark:bg-[#1E1E2E] text-slate-500 dark:text-white/40 hover:bg-slate-50 dark:hover:bg-white/10'
                         }`}
                     >
                         {opt.icon}
@@ -484,8 +611,8 @@ export const OperatorDashboard = () => {
                 <HistoryItemSkeleton />
               </>
             ) : filteredHistory.length === 0 ? (
-                <div className="text-center py-16 text-white/20">
-                    <Search size={40} className="mx-auto mb-4 opacity-5" />
+                <div className="text-center py-16 text-slate-400 dark:text-white/20">
+                    <Search size={40} className="mx-auto mb-4 opacity-10" />
                     <p className="text-xs font-medium tracking-widest uppercase">No history records found</p>
                     <button onClick={() => {setStatusFilter('ALL'); setTransportFilter('ALL'); setSearchQuery('');}} className="mt-4 text-[10px] text-blue-500 font-bold hover:underline underline-offset-4">
                         Reset all filters
@@ -496,32 +623,32 @@ export const OperatorDashboard = () => {
                     <div 
                       key={visitor.id} 
                       onClick={() => setSelectedVisitor(visitor)}
-                      className="group animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-2 rounded-2xl border border-white/5 bg-[#151520] p-4 transition-all duration-300 hover:bg-[#1E1E2E] cursor-pointer"
+                      className="group animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-2 rounded-2xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#151520] p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-[#1E1E2E] cursor-pointer shadow-sm"
                     >
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
-                                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10">
+                                <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-100 dark:bg-white/5 ring-1 ring-slate-200 dark:ring-white/10">
                                     <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${visitor.name}`} alt="" className="h-full w-full p-1" />
-                                    <div className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#151520] ${visitor.status === VisitorStatus.APPROVED ? 'bg-emerald-500' : visitor.status === VisitorStatus.REJECTED ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                                    <div className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-[#151520] ${visitor.status === VisitorStatus.APPROVED ? 'bg-emerald-500' : visitor.status === VisitorStatus.REJECTED ? 'bg-red-500' : 'bg-blue-500'}`}></div>
                                 </div>
                                 <div className="overflow-hidden">
-                                    <h4 className="truncate text-xs font-bold text-white transition-colors group-hover:text-blue-400">{visitor.name}</h4>
+                                    <h4 className="truncate text-xs font-bold text-slate-900 dark:text-white transition-colors group-hover:text-blue-500 dark:group-hover:text-blue-400">{visitor.name}</h4>
                                     <div className="mt-1 flex items-center gap-2">
-                                        <span className="bg-white/5 px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-tighter text-white/40 rounded">
+                                        <span className="bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-tighter text-slate-500 dark:text-white/40 rounded">
                                             #{visitor.id}
                                         </span>
-                                        <span className="flex items-center gap-1 text-[9px] font-medium text-white/30">
+                                        <span className="flex items-center gap-1 text-[9px] font-medium text-slate-400 dark:text-white/30">
                                             {visitor.transportMode === TransportMode.CAR ? <Car size={10}/> : <div className="flex items-center"><UserIcon size={10}/><Bike size={10}/></div>}
                                             {visitor.transportMode === TransportMode.CAR ? (visitor.licensePlate || '??-????') : 'Walk-in'}
                                             <span className="opacity-20 mx-1">|</span>
-                                            <span className="text-purple-400/60 font-bold">{visitor.registeredBy === 'SELF' ? 'Self' : visitor.registeredBy}</span>
+                                            <span className="text-purple-600/60 dark:text-purple-400/60 font-bold">{visitor.registeredBy === 'SELF' ? 'Self' : visitor.registeredBy}</span>
                                         </span>
                                     </div>
                                 </div>
                             </div>
                             <div className="flex shrink-0 flex-col items-end gap-2">
                                 <StatusBadge status={visitor.status} />
-                                <div className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-tighter text-white/20">
+                                <div className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-tighter text-slate-400 dark:text-white/20">
                                     <Calendar size={10} />
                                     {new Date(visitor.visitDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                 </div>
@@ -567,28 +694,28 @@ const VisitorRequestCard: React.FC<VisitorRequestCardProps> = ({ visitor, isProc
     return (
         <div 
           onClick={onClick}
-          className={`group animate-in zoom-in relative overflow-hidden rounded-3xl border border-white/10 bg-[#1E1E2E] p-5 shadow-2xl transition-all duration-300 hover:border-blue-500/30 cursor-pointer ${isProcessing ? 'pointer-events-none opacity-70' : ''}`}
+          className={`group animate-in zoom-in relative overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1E1E2E] p-5 shadow-2xl transition-all duration-300 hover:border-blue-500/30 cursor-pointer ${isProcessing ? 'pointer-events-none opacity-70' : ''}`}
         >
-            <div className="pointer-events-none absolute right-0 top-0 -mr-16 -mt-16 h-32 w-32 rounded-full bg-blue-600/5 blur-[40px]"></div>
+            <div className="pointer-events-none absolute right-0 top-0 -mr-16 -mt-16 h-32 w-32 rounded-full bg-blue-100 dark:bg-blue-600/5 blur-[40px]"></div>
             
             <div className="relative z-10 mb-5 flex items-start justify-between">
                 <div className="flex items-center gap-4">
-                    <div className="h-14 w-14 overflow-hidden rounded-2xl bg-gradient-to-br from-white/10 to-white/5 p-0.5 shadow-inner ring-1 ring-white/10">
+                    <div className="h-14 w-14 overflow-hidden rounded-2xl bg-gradient-to-br from-slate-100 to-white dark:from-white/10 dark:to-white/5 p-0.5 shadow-inner ring-1 ring-slate-200 dark:ring-white/10">
                         <img src={visitor.icPhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${visitor.name}`} alt="Avatar" className="h-full w-full object-cover" />
                     </div>
                     <div>
-                        <h3 className="text-md font-black leading-tight text-white transition-colors group-hover:text-blue-400">{visitor.name}</h3>
+                        <h3 className="text-md font-black leading-tight text-slate-900 dark:text-white transition-colors group-hover:text-blue-500 dark:group-hover:text-blue-400">{visitor.name}</h3>
                         <div className="mt-2 flex flex-col gap-1.5">
-                            <div className="flex items-center gap-1.5 text-[10px] font-medium text-white/40">
+                            <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-white/40">
                                 <Briefcase size={12} className="text-blue-500/60" /> {visitor.purpose}
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] font-medium text-white/40">
-                                {visitor.transportMode === TransportMode.CAR ? <Car size={12} className="text-indigo-400/60" /> : <div className="flex items-center gap-1"><UserIcon size={12} className="text-indigo-400/60" /><Bike size={12} className="text-indigo-400/60" /></div>}
+                            <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-500 dark:text-white/40">
+                                {visitor.transportMode === TransportMode.CAR ? <Car size={12} className="text-indigo-500/60 dark:text-indigo-400/60" /> : <div className="flex items-center gap-1"><UserIcon size={12} className="text-indigo-500/60 dark:text-indigo-400/60" /><Bike size={12} className="text-indigo-500/60 dark:text-indigo-400/60" /></div>}
                                 <span className="uppercase tracking-widest">{visitor.transportMode === TransportMode.CAR ? 'Car' : 'Walk-in / Bike'}</span>
-                                {visitor.transportMode === TransportMode.CAR && visitor.licensePlate && <span className="ml-1 font-mono text-white/20">[{visitor.licensePlate}]</span>}
+                                {visitor.transportMode === TransportMode.CAR && visitor.licensePlate && <span className="ml-1 font-mono text-slate-400 dark:text-white/20">[{visitor.licensePlate}]</span>}
                             </div>
                             {visitor.registeredBy !== 'SELF' && (
-                               <div className="flex items-center gap-1.5 text-[9px] font-black text-purple-400/70 uppercase tracking-widest mt-0.5">
+                               <div className="flex items-center gap-1.5 text-[9px] font-black text-purple-600/70 dark:text-purple-400/70 uppercase tracking-widest mt-0.5">
                                  <UserCheck size={11} /> Invited by {visitor.registeredBy}
                                </div>
                             )}
@@ -597,7 +724,7 @@ const VisitorRequestCard: React.FC<VisitorRequestCardProps> = ({ visitor, isProc
                 </div>
                 <div className="flex flex-col items-end">
                   <StatusBadge status={visitor.status} />
-                  <span className="mt-2 font-mono text-[10px] font-black tracking-widest text-white/20">ID {visitor.id}</span>
+                  <span className="mt-2 font-mono text-[10px] font-black tracking-widest text-slate-400 dark:text-white/20">ID {visitor.id}</span>
                 </div>
             </div>
 
@@ -609,7 +736,7 @@ const VisitorRequestCard: React.FC<VisitorRequestCardProps> = ({ visitor, isProc
                             placeholder="Enter rejection reason..."
                             value={rejectionReason}
                             onChange={(e) => setRejectionReason(e.target.value)}
-                            className="!py-3 !text-xs !bg-red-500/5 !text-red-200 border-red-500/20 focus:ring-red-500/10 !mb-0"
+                            className="!py-3 !text-xs !bg-red-50 dark:!bg-red-500/5 text-red-700 dark:!text-red-200 border-red-200 dark:border-red-500/20 focus:ring-red-500/10 !mb-0"
                             autoFocus
                             onClick={(e) => e.stopPropagation()}
                          />
@@ -623,7 +750,7 @@ const VisitorRequestCard: React.FC<VisitorRequestCardProps> = ({ visitor, isProc
                             className={`flex-1 py-3.5 rounded-2xl border transition-all duration-300 text-xs font-black uppercase tracking-widest active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 ${
                               showRejectInput 
                               ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-900/20' 
-                              : 'border-red-500/10 text-red-500/60 hover:bg-red-500/10 hover:text-red-400'
+                              : 'border-red-200 dark:border-red-500/10 text-red-600/60 dark:text-red-500/60 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400'
                             }`}
                         >
                             {showRejectInput ? <><Send size={14}/> Submit Deny</> : 'Decline'}
@@ -642,7 +769,7 @@ const VisitorRequestCard: React.FC<VisitorRequestCardProps> = ({ visitor, isProc
                         {showRejectInput && (
                           <button 
                             onClick={(e) => { e.stopPropagation(); setShowRejectInput(false); }}
-                            className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white transition-colors"
+                            className="w-12 h-12 flex items-center justify-center rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white transition-colors"
                           >
                             <X size={20} />
                           </button>

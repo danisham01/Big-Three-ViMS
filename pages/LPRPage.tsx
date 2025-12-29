@@ -4,52 +4,111 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GoogleGenAI, Type } from "@google/genai";
 import { useStore } from '../store';
 import { GlassCard, Button, LoadingOverlay, Toast, Spinner, StatusBadge, ConfirmModal } from '../components/GlassComponents';
-import { Visitor, VisitorStatus, TransportMode, LPRLog, UserRole } from '../types';
-import { ArrowLeft, Camera, Scan, Car, ShieldCheck, AlertCircle, Ban, RefreshCw, UserCheck, Briefcase, Check, Search, Trash2, ListFilter, Info, MessageSquare, ChevronDown, LogOut, History, X, Phone, User, Clock, ShieldAlert, ExternalLink, Activity, Sparkles, TrendingUp, LogIn, LogOut as LogOutIcon } from 'lucide-react';
+import { Visitor, VisitorStatus, TransportMode, LPRLog, UserRole, VipType, VipRecord, VEHICLE_COLORS } from '../types';
+import { ArrowLeft, Camera, Scan, Car, ShieldCheck, AlertCircle, Ban, RefreshCw, UserCheck, Briefcase, Check, Search, Trash2, ListFilter, Info, MessageSquare, ChevronDown, LogOut, History, X, Phone, User, Clock, ShieldAlert, ExternalLink, Activity, Sparkles, TrendingUp, LogIn, LogOut as LogOutIcon, Crown, Timer, Palette } from 'lucide-react';
 
 const LPR_SCHEMA = {
   type: Type.OBJECT,
   properties: {
     plate: { type: Type.STRING, description: "The license plate number or 'NONE'" },
-    make: { type: Type.STRING, description: "The vehicle brand/make or 'UNKNOWN'" },
-    model: { type: Type.STRING, description: "The specific model of the vehicle or 'UNKNOWN'" },
+    color: { 
+        type: Type.STRING, 
+        description: "The vehicle color. Choose from: Black, White, Silver, Grey, Blue, Red, Gold, Green, Brown, Yellow, Other",
+        enum: VEHICLE_COLORS
+    },
     confidence: { type: Type.NUMBER, description: "Confidence score from 0 to 100" }
   },
-  required: ['plate', 'make', 'model', 'confidence']
+  required: ['plate', 'color', 'confidence']
 };
 
-const ScanDetailModal = ({ log, onClose, visitors, blacklist }: { log: LPRLog | null, onClose: () => void, visitors: Visitor[], blacklist: any[] }) => {
+const ScanDetailModal = ({ log, onClose, visitors, blacklist, vipRecords }: { log: LPRLog | null, onClose: () => void, visitors: Visitor[], blacklist: any[], vipRecords: VipRecord[] }) => {
   if (!log) return null;
 
-  const visitorMatch = log.visitorId ? visitors.find(v => v.id === log.visitorId) : null;
+  const visitorMatch = !log.isVip && log.visitorId ? visitors.find(v => v.id === log.visitorId) : null;
+  const vipMatch = log.isVip && log.visitorId ? vipRecords.find(v => v.id === log.visitorId) : null;
   const blacklistMatch = log.status === 'Blacklisted' ? blacklist.find(b => b.licensePlate?.toUpperCase().replace(/[^A-Z0-9]/g, '') === log.plate) : null;
+
+  // Authoritative Data sources
+  const entryTime = log.isVip ? vipMatch?.lastEntryTime : visitorMatch?.timeIn;
+  const exitTime = log.isVip ? vipMatch?.lastExitTime : visitorMatch?.timeOut;
+  const recordedColor = log.vehicleColor || (log.isVip ? vipMatch?.vehicleColor : visitorMatch?.vehicleColor);
+
+  // Robust Duration Calculation
+  let durationDisplay = null;
+  
+  if (entryTime) {
+    const start = new Date(entryTime).getTime();
+    const end = exitTime ? new Date(exitTime).getTime() : Date.now();
+
+    if (!isNaN(start) && !isNaN(end)) {
+      if (end < start) {
+        durationDisplay = "Invalid timestamps";
+      } else {
+        const diffMs = end - start;
+        const minutesTotal = Math.floor(diffMs / 60000);
+        
+        // Format logic
+        let timeStr = "";
+        if (minutesTotal < 60) {
+          timeStr = `${minutesTotal}m`;
+        } else {
+          const hrs = Math.floor(minutesTotal / 60);
+          const mins = minutesTotal % 60;
+          timeStr = `${hrs}h ${mins}m`;
+        }
+
+        if (!exitTime) {
+          durationDisplay = `In progress (${timeStr})`;
+        } else {
+          durationDisplay = timeStr;
+        }
+      }
+    }
+  }
+
+  const getColorDot = (color?: string) => {
+      const c = color?.toLowerCase() || 'gray';
+      const map: {[key: string]: string} = {
+          black: '#000000',
+          white: '#ffffff',
+          silver: '#c0c0c0',
+          grey: '#808080',
+          blue: '#3b82f6',
+          red: '#ef4444',
+          gold: '#ffd700',
+          green: '#22c55e',
+          brown: '#a52a2a',
+          yellow: '#eab308'
+      };
+      return map[c] || '#94a3b8';
+  };
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
-      <div className="max-w-md w-full max-h-[90vh] overflow-y-auto no-scrollbar bg-[#121217] border border-white/10 rounded-[2.5rem] shadow-[0_32px_64px_rgba(0,0,0,0.5)] flex flex-col relative animate-in zoom-in-95 duration-300">
-        <button onClick={onClose} className="absolute top-6 right-6 z-20 w-10 h-10 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-white/40 hover:text-white transition-colors">
+      <div className="max-w-md w-full max-h-[90vh] overflow-y-auto no-scrollbar bg-white dark:bg-[#121217] border border-slate-200 dark:border-white/10 rounded-[2.5rem] shadow-[0_32px_64px_rgba(0,0,0,0.5)] flex flex-col relative animate-in zoom-in-95 duration-300 transition-colors">
+        <button onClick={onClose} className="absolute top-6 right-6 z-20 w-10 h-10 rounded-full bg-white/20 dark:bg-white/5 border border-white/20 dark:border-white/5 flex items-center justify-center text-white hover:bg-white/40 transition-colors shadow-lg">
           <X size={20} />
         </button>
 
         <div className="p-8 pb-4 text-center">
-          <div className="w-full aspect-video rounded-3xl overflow-hidden mb-6 bg-black border border-white/10 shadow-inner">
+          <div className="w-full aspect-video rounded-3xl overflow-hidden mb-6 bg-black border border-slate-200 dark:border-white/10 shadow-inner">
             <img src={log.thumbnail} alt="Scan Snapshot" className="w-full h-full object-cover" />
           </div>
-          <div className="bg-white text-black px-5 py-2 rounded-xl font-mono font-black text-2xl tracking-widest inline-block mb-4 shadow-[0_8px_16px_rgba(255,255,255,0.2)]">
+          <div className="bg-white text-black px-5 py-2 rounded-xl font-mono font-black text-2xl tracking-widest inline-block mb-4 shadow-[0_8px_16px_rgba(0,0,0,0.2)] border border-slate-200">
             {log.plate}
           </div>
-          <h2 className="text-2xl font-black text-white">{log.status}</h2>
-          <p className="text-white/30 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white">{log.status}</h2>
+          <p className="text-slate-500 dark:text-white/30 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">
             TIMESTAMP: {new Date(log.timestamp).toLocaleString()}
           </p>
         </div>
 
         <div className="p-8 pt-4 space-y-6">
           <div className={`p-5 rounded-3xl border flex items-center gap-5 transition-all ${
-            log.status === 'Approved' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.1)]' :
-            log.status === 'Rejected' || log.status === 'Blacklisted' ? 'bg-red-500/10 border-red-500/30 text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.1)]' :
-            log.status === 'Pending' ? 'bg-orange-500/10 border-orange-500/30 text-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.1)]' :
-            'bg-white/5 border-white/10 text-white/40'
+            log.status === 'Approved' ? 'bg-emerald-100 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.1)]' :
+            log.status === 'Rejected' || log.status === 'Blacklisted' ? 'bg-red-100 dark:bg-red-500/10 border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.1)]' :
+            log.status === 'Pending' ? 'bg-orange-100 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/30 text-orange-600 dark:text-orange-400 shadow-[0_0_20px_rgba(249,115,22,0.1)]' :
+            'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/40'
           }`}>
              {log.status === 'Approved' ? <ShieldCheck size={28} /> : log.status === 'Pending' ? <RefreshCw className="animate-spin-slow" size={28} /> : <ShieldAlert size={28} />}
              <div>
@@ -62,28 +121,42 @@ const ScanDetailModal = ({ log, onClose, visitors, blacklist }: { log: LPRLog | 
              </div>
           </div>
 
+          {log.isVip && (
+             <div className="bg-gradient-to-r from-amber-100 to-yellow-200 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-500/20 p-5 rounded-3xl flex items-center gap-4">
+                <Crown size={32} className="text-amber-600 dark:text-amber-400" />
+                <div>
+                   <p className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-widest">Priority Access</p>
+                   <p className="text-lg font-bold text-amber-900 dark:text-amber-100">{log.vipType} • {log.designation}</p>
+                </div>
+             </div>
+          )}
+
           <div className="space-y-4">
             <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-widest px-1">Registry Data</h3>
-            <div className="bg-[#1E1E2E]/50 border border-white/5 rounded-3xl p-5 space-y-4 shadow-xl">
+            <div className="bg-slate-50 dark:bg-[#1E1E2E]/50 border border-slate-200 dark:border-white/5 rounded-3xl p-5 space-y-4 shadow-xl">
               <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 border border-white/5"><User size={18} /></div>
+                 <div className="w-10 h-10 rounded-xl bg-white/50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-white/40 border border-slate-200 dark:border-white/5"><User size={18} /></div>
                  <div>
-                   <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest">Requestor</p>
-                   <p className="text-sm font-bold text-white/90">{log.requestorName || 'UNIDENTIFIED'}</p>
+                   <p className="text-[9px] text-slate-400 dark:text-white/30 font-bold uppercase tracking-widest">Requestor / Name</p>
+                   <p className="text-sm font-bold text-slate-900 dark:text-white/90">{log.requestorName || 'UNIDENTIFIED'}</p>
                  </div>
               </div>
               <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 border border-white/5"><Phone size={18} /></div>
+                 <div className="w-10 h-10 rounded-xl bg-white/50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-white/40 border border-slate-200 dark:border-white/5"><Phone size={18} /></div>
                  <div>
-                   <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest">Contact</p>
-                   <p className="text-sm font-mono font-bold text-white/90">{log.phoneNumber || 'N/A'}</p>
+                   <p className="text-[9px] text-slate-400 dark:text-white/30 font-bold uppercase tracking-widest">Contact</p>
+                   <p className="text-sm font-mono font-bold text-slate-900 dark:text-white/90">{log.phoneNumber || 'N/A'}</p>
                  </div>
               </div>
+              {/* Simplified Vehicle Color Section */}
               <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40 border border-white/5"><Car size={18} /></div>
+                 <div className="w-10 h-10 rounded-xl bg-white/50 dark:bg-white/5 flex items-center justify-center text-slate-400 dark:text-white/40 border border-slate-200 dark:border-white/5"><Palette size={18} /></div>
                  <div>
-                   <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest">Vehicle Intel</p>
-                   <p className="text-sm font-bold text-white/90 uppercase">{log.make} {log.model}</p>
+                   <p className="text-[9px] text-slate-400 dark:text-white/30 font-bold uppercase tracking-widest">Vehicle Color</p>
+                   <div className="flex items-center gap-2">
+                      {recordedColor && <div className="w-3 h-3 rounded-full border border-slate-300 dark:border-white/20 shadow-sm" style={{ backgroundColor: getColorDot(recordedColor) }}></div>}
+                      <p className="text-sm font-bold text-slate-900 dark:text-white/90">{recordedColor || 'Not captured'}</p>
+                   </div>
                  </div>
               </div>
             </div>
@@ -91,37 +164,44 @@ const ScanDetailModal = ({ log, onClose, visitors, blacklist }: { log: LPRLog | 
 
           <div className="space-y-4">
             <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest px-1">Movement Tracking</h3>
-            <div className="bg-white/5 border border-white/5 rounded-3xl p-5 space-y-4">
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-3xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                  <div>
-                    <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest">Date/Time Entry</p>
-                    <p className="text-sm font-bold text-emerald-400">
-                      {visitorMatch?.timeIn ? new Date(visitorMatch.timeIn).toLocaleString() : 'Not recorded'}
+                    <p className="text-[9px] text-slate-400 dark:text-white/30 font-bold uppercase tracking-widest">Date/Time Entry</p>
+                    <p className="text-sm font-bold text-emerald-500 dark:text-emerald-400">
+                      {entryTime ? new Date(entryTime).toLocaleString() : 'Not recorded'}
                     </p>
                  </div>
                  <div className="text-right">
-                    <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest">Date/Time Exit</p>
-                    <p className="text-sm font-bold text-red-400">
-                      {visitorMatch?.timeOut ? new Date(visitorMatch.timeOut).toLocaleString() : 'Not recorded'}
+                    <p className="text-[9px] text-slate-400 dark:text-white/30 font-bold uppercase tracking-widest">Date/Time Exit</p>
+                    <p className="text-sm font-bold text-red-500 dark:text-red-400">
+                      {exitTime ? new Date(exitTime).toLocaleString() : 'Not recorded'}
                     </p>
                  </div>
               </div>
+              
+              {durationDisplay && (
+                <div className="pt-4 border-t border-slate-200 dark:border-white/5 flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400 animate-in fade-in">
+                   <Timer size={16} />
+                   <p className="text-xs font-black uppercase tracking-widest">Duration: {durationDisplay}</p>
+                </div>
+              )}
             </div>
           </div>
 
           {log.status === 'Blacklisted' && blacklistMatch && (
             <div className="space-y-3">
               <h3 className="text-[10px] font-black text-red-500 uppercase tracking-widest px-1">Security Alert</h3>
-              <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-5">
-                 <p className="text-sm text-red-200/70 italic leading-relaxed mb-4">"{blacklistMatch.reason}"</p>
+              <div className="bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/20 rounded-3xl p-5">
+                 <p className="text-sm text-red-700 dark:text-red-200/70 italic leading-relaxed mb-4">"{blacklistMatch.reason}"</p>
                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest">Added By</p>
-                      <p className="text-[10px] font-bold text-white/60">{blacklistMatch.createdBy}</p>
+                      <p className="text-[8px] text-slate-400 dark:text-white/20 font-bold uppercase tracking-widest">Added By</p>
+                      <p className="text-[10px] font-bold text-slate-700 dark:text-white/60">{blacklistMatch.createdBy}</p>
                     </div>
                     <div>
-                      <p className="text-[8px] text-white/20 font-bold uppercase tracking-widest">Banned On</p>
-                      <p className="text-[10px] font-bold text-white/60">{new Date(blacklistMatch.timestamp).toLocaleDateString()}</p>
+                      <p className="text-[8px] text-slate-400 dark:text-white/20 font-bold uppercase tracking-widest">Banned On</p>
+                      <p className="text-[10px] font-bold text-slate-700 dark:text-white/60">{new Date(blacklistMatch.timestamp).toLocaleDateString()}</p>
                     </div>
                  </div>
               </div>
@@ -142,7 +222,7 @@ const ScanDetailModal = ({ log, onClose, visitors, blacklist }: { log: LPRLog | 
 export const LPRDetectionPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { visitors, checkBlacklist, blacklist, lprLogs, addLPRLog, clearLPRLogs, updateVisitor, currentUser, logout } = useStore();
+  const { visitors, checkBlacklist, checkVip, blacklist, vipRecords, lprLogs, addLPRLog, clearLPRLogs, updateVisitor, updateVipMovement, currentUser, logout } = useStore();
   
   const currentView = searchParams.get('view') || 'scanner';
   const [lprMode, setLprMode] = useState<'ENTRY' | 'EXIT'>('ENTRY');
@@ -225,7 +305,7 @@ export const LPRDetectionPage = () => {
         contents: {
           parts: [
             { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-            { text: "Identify the vehicle and license plate." }
+            { text: "Identify the vehicle license plate and color." }
           ],
         },
         config: {
@@ -236,23 +316,36 @@ export const LPRDetectionPage = () => {
 
       const result = JSON.parse(response.text || '{}');
       const plate = result.plate?.toUpperCase().replace(/[^A-Z0-9]/g, '') || 'NONE';
+      const color = result.color || 'Other';
 
       if (plate !== 'NONE' && plate.length >= 3) {
+        // Priority 1: Blacklist
         const blacklisted = checkBlacklist(undefined, plate, undefined);
+        
+        // Priority 2: VIP
+        const vip = !blacklisted ? checkVip(plate) : null;
+
+        // Priority 3: Normal Visitor
         const match = visitors.find(v => 
           v.transportMode === TransportMode.CAR && 
           v.licensePlate?.toUpperCase().replace(/[^A-Z0-9]/g, '') === plate
         );
 
         let status: LPRLog['status'] = 'Unknown';
-        if (blacklisted) status = 'Blacklisted';
-        else if (match) {
+        
+        if (blacklisted) {
+            status = 'Blacklisted';
+        } else if (vip) {
+            status = 'Approved'; // VIPs are auto approved if checkVip returns a record (it checks active/validity)
+        } else if (match) {
           if (match.status === VisitorStatus.REJECTED) status = 'Rejected';
           else if (match.status === VisitorStatus.APPROVED) status = 'Approved';
           else status = 'Pending';
         }
 
         const now = new Date().toISOString();
+        
+        // 1. UPDATE VISITOR MOVEMENT
         if (status === 'Approved' && match) {
           if (lprMode === 'ENTRY') {
              updateVisitor(match.id, { timeIn: now });
@@ -261,17 +354,24 @@ export const LPRDetectionPage = () => {
           }
         }
 
+        // 2. UPDATE VIP MOVEMENT
+        if (status === 'Approved' && vip) {
+           updateVipMovement(vip.id, lprMode, now);
+        }
+
         addLPRLog({
           plate,
-          make: result.make || 'UNKNOWN',
-          model: result.model || 'UNKNOWN',
+          vehicleColor: color,
           confidence: result.confidence || 0,
           thumbnail: canvas.toDataURL('image/jpeg', 0.5),
           status,
           mode: lprMode,
-          visitorId: match?.id,
-          requestorName: match?.name || (blacklisted ? blacklisted.name : 'UNIDENTIFIED'),
-          phoneNumber: match?.contact || (blacklisted ? blacklisted.phone : 'N/A')
+          visitorId: match?.id || (vip ? vip.id : undefined),
+          requestorName: vip ? vip.name : (match?.name || (blacklisted ? blacklisted.name : 'UNIDENTIFIED')),
+          phoneNumber: vip ? vip.contact : (match?.contact || (blacklisted ? blacklisted.phone : 'N/A')),
+          isVip: !!vip,
+          vipType: vip?.vipType,
+          designation: vip?.designation === 'Other (Specify)' ? vip.customDesignation : vip?.designation
         });
       }
     } catch (err) {
@@ -305,7 +405,7 @@ export const LPRDetectionPage = () => {
       blacklisted: todayLogs.filter(l => l.status === 'Blacklisted').length,
       pending: todayLogs.filter(l => l.status === 'Pending').length,
       unknown: todayLogs.filter(l => l.status === 'Unknown').length,
-      avgConf: todayLogs.length > 0 ? Math.round(todayLogs.reduce((a, b) => a + b.confidence, 0) / todayLogs.length) : 0
+      avgConf: 0 // Removed confidence averaging to keep it simple with new data model, or re-add if needed
     };
   }, [lprLogs, lprMode]);
 
@@ -329,7 +429,13 @@ export const LPRDetectionPage = () => {
   };
 
   const filteredLogs = useMemo(() => {
-    let base = [...lprLogs].reverse();
+    // 1. Filter by the current terminal mode (Entry vs Exit)
+    let base = lprLogs.filter(log => log.mode === lprMode);
+    
+    // 2. Newest logs first
+    base = [...base].reverse();
+
+    // 3. Filter by search query
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       base = base.filter(l => 
@@ -338,14 +444,20 @@ export const LPRDetectionPage = () => {
       );
     }
     return base;
-  }, [lprLogs, searchQuery]);
+  }, [lprLogs, searchQuery, lprMode]);
 
   if (!currentUser) return null;
 
   return (
-    <div className="min-h-screen text-white flex flex-col pb-32">
+    <div className="min-h-screen text-slate-900 dark:text-white flex flex-col pb-32">
       <Toast show={toast.show} message={toast.message} onHide={() => setToast({ ...toast, show: false })} />
-      <ScanDetailModal log={selectedLog} onClose={() => setSelectedLog(null)} visitors={visitors} blacklist={blacklist} />
+      <ScanDetailModal 
+        log={selectedLog} 
+        onClose={() => setSelectedLog(null)} 
+        visitors={visitors} 
+        blacklist={blacklist} 
+        vipRecords={vipRecords}
+      />
       <ConfirmModal 
         show={showLogoutConfirm}
         title="Terminal Logout"
@@ -356,19 +468,19 @@ export const LPRDetectionPage = () => {
       />
       
       {/* Header */}
-      <div className="p-6 pb-8 flex items-center justify-between sticky top-0 z-50 bg-[#050508]/60 backdrop-blur-2xl border-b border-white/5">
+      <div className="p-6 pb-8 flex items-center justify-between sticky top-0 z-50 bg-white/60 dark:bg-[#050508]/60 backdrop-blur-2xl border-b border-slate-200 dark:border-white/5 transition-colors">
          <div className="flex items-center gap-4">
-           <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.2)]">
+           <div className="w-12 h-12 rounded-2xl bg-blue-100 dark:bg-blue-600/10 border border-blue-200 dark:border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.2)]">
              <Scan size={26} />
            </div>
            <div>
-             <h1 className="text-xl font-black text-white leading-tight">LPR Terminal</h1>
+             <h1 className="text-xl font-black text-slate-900 dark:text-white leading-tight">LPR Terminal</h1>
              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500/80">
                Mode: {lprMode}
              </p>
            </div>
          </div>
-         <button onClick={() => setShowLogoutConfirm(true)} className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center hover:bg-red-500/20 transition-all active:scale-90">
+         <button onClick={() => setShowLogoutConfirm(true)} className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-500 border border-red-200 dark:border-red-500/20 flex items-center justify-center hover:bg-red-200 dark:hover:bg-red-500/20 transition-all active:scale-90">
            <LogOut size={22} />
          </button>
       </div>
@@ -376,16 +488,16 @@ export const LPRDetectionPage = () => {
       <div className="max-w-2xl mx-auto w-full px-5 space-y-8 mt-8">
         
         {/* Mode Selector */}
-        <div className="flex bg-[#1E1E2E] p-1.5 rounded-3xl border border-white/5 shadow-2xl">
+        <div className="flex bg-white dark:bg-[#1E1E2E] p-1.5 rounded-3xl border border-slate-200 dark:border-white/5 shadow-2xl">
            <button 
              onClick={() => setLprMode('ENTRY')}
-             className={`flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${lprMode === 'ENTRY' ? 'bg-blue-600 text-white shadow-xl' : 'text-white/30 hover:text-white/60'}`}
+             className={`flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${lprMode === 'ENTRY' ? 'bg-blue-600 text-white shadow-xl' : 'text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white/60'}`}
            >
              <LogIn size={18} /> Entry LPR
            </button>
            <button 
              onClick={() => setLprMode('EXIT')}
-             className={`flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${lprMode === 'EXIT' ? 'bg-indigo-600 text-white shadow-xl' : 'text-white/30 hover:text-white/60'}`}
+             className={`flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${lprMode === 'EXIT' ? 'bg-indigo-600 text-white shadow-xl' : 'text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white/60'}`}
            >
              <LogOutIcon size={18} /> Exit LPR
            </button>
@@ -397,23 +509,23 @@ export const LPRDetectionPage = () => {
             <section className="grid grid-cols-3 gap-3">
               {[
                 { label: `${lprMode} Today`, count: analytics.total, icon: Activity },
-                { label: 'Security Hits', count: analytics.blacklisted + analytics.rejected, icon: ShieldAlert, color: 'text-red-400' },
-                { label: 'AI Quality', count: `${analytics.avgConf}%`, icon: ShieldCheck, color: 'text-emerald-400' }
+                { label: 'Security Hits', count: analytics.blacklisted + analytics.rejected, icon: ShieldAlert, color: 'text-red-500 dark:text-red-400' },
+                { label: 'AI Quality', count: `OK`, icon: ShieldCheck, color: 'text-emerald-500 dark:text-emerald-400' }
               ].map((stat, i) => (
-                <div key={i} className={`bg-[#1E1E2E]/80 border border-white/10 rounded-3xl p-5 shadow-2xl relative overflow-hidden group`}>
-                   <p className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-1 z-10 relative">{stat.label}</p>
-                   <p className={`text-2xl font-black z-10 relative ${stat.color || 'text-white'}`}>{stat.count}</p>
+                <div key={i} className={`bg-white/80 dark:bg-[#1E1E2E]/80 border border-slate-200 dark:border-white/10 rounded-3xl p-5 shadow-2xl relative overflow-hidden group`}>
+                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-white/30 mb-1 z-10 relative">{stat.label}</p>
+                   <p className={`text-2xl font-black z-10 relative ${stat.color || 'text-slate-900 dark:text-white'}`}>{stat.count}</p>
                 </div>
               ))}
             </section>
 
             {/* Summarize Today (Gemini AI) */}
             <section>
-               <GlassCard className="!p-6 !bg-gradient-to-br from-blue-600/10 to-transparent border-blue-500/20">
+               <GlassCard className="!p-6 !bg-gradient-to-br from-blue-50 to-white dark:from-blue-600/10 dark:to-transparent border-blue-100 dark:border-blue-500/20">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                       <Sparkles size={18} className="text-blue-400" />
-                       <h3 className="text-xs font-black uppercase tracking-widest text-white/80">Summarize Today's {lprMode === 'ENTRY' ? 'Entries' : 'Exits'}</h3>
+                       <Sparkles size={18} className="text-blue-500 dark:text-blue-400" />
+                       <h3 className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-white/80">Summarize Today's {lprMode === 'ENTRY' ? 'Entries' : 'Exits'}</h3>
                     </div>
                     <Button 
                       variant="outline" 
@@ -425,8 +537,8 @@ export const LPRDetectionPage = () => {
                     </Button>
                   </div>
                   {aiSummary && (
-                    <div className="p-4 bg-black/40 rounded-2xl border border-white/5 animate-in slide-in-from-top-2">
-                      <p className="text-[11px] leading-relaxed text-white/70 italic">
+                    <div className="p-4 bg-slate-100 dark:bg-black/40 rounded-2xl border border-slate-200 dark:border-white/5 animate-in slide-in-from-top-2">
+                      <p className="text-[11px] leading-relaxed text-slate-700 dark:text-white/70 italic">
                         {aiSummary}
                       </p>
                     </div>
@@ -436,20 +548,20 @@ export const LPRDetectionPage = () => {
 
             {/* Camera Viewfinder */}
             <section className="space-y-4">
-              <div className={`relative group bg-[#000] rounded-[3rem] overflow-hidden aspect-[4/3] border border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.8)] ring-1 ${lprMode === 'ENTRY' ? 'ring-blue-500/20' : 'ring-indigo-500/20'}`}>
+              <div className={`relative group bg-[#000] rounded-[3rem] overflow-hidden aspect-[4/3] border border-slate-200 dark:border-white/10 shadow-[0_32px_64px_rgba(0,0,0,0.8)] ring-1 ${lprMode === 'ENTRY' ? 'ring-blue-500/20' : 'ring-indigo-500/20'}`}>
                 <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover opacity-90" />
                 <canvas ref={canvasRef} className="hidden" />
 
                 <div className="absolute inset-0 pointer-events-none p-10 flex items-center justify-center">
-                   <div className="w-full h-full border-2 border-white/5 rounded-[2.5rem] relative">
-                      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5/6 h-2/5 border-2 ${lprMode === 'ENTRY' ? 'border-blue-500/30' : 'border-indigo-500/30'} border-dashed rounded-[2rem] flex items-center justify-center`}>
+                   <div className="w-full h-full border-2 border-white/20 rounded-[2.5rem] relative">
+                      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5/6 h-2/5 border-2 ${lprMode === 'ENTRY' ? 'border-blue-500/50' : 'border-indigo-500/50'} border-dashed rounded-[2rem] flex items-center justify-center`}>
                          {autoScan && (
                            <div className="bg-black/40 backdrop-blur-xl px-5 py-2.5 rounded-2xl border border-white/10 animate-pulse">
                               <p className="text-[10px] font-black text-white/80 tracking-[0.3em] uppercase">Watching {lprMode}</p>
                            </div>
                          )}
                       </div>
-                      <div className={`absolute top-0 left-0 w-full h-0.5 ${lprMode === 'ENTRY' ? 'bg-blue-500/10' : 'bg-indigo-500/10'} scanner-line`}></div>
+                      <div className={`absolute top-0 left-0 w-full h-0.5 ${lprMode === 'ENTRY' ? 'bg-blue-500/50' : 'bg-indigo-500/50'} scanner-line`}></div>
                    </div>
                 </div>
 
@@ -471,29 +583,29 @@ export const LPRDetectionPage = () => {
               <div className="flex items-center justify-between px-1">
                  <div className="flex items-center gap-3">
                    <History size={24} className="text-blue-500" />
-                   <h2 className="text-sm font-black uppercase tracking-[0.2em] text-white/80">LPR Registry Logs</h2>
+                   <h2 className="text-sm font-black uppercase tracking-[0.2em] text-slate-500 dark:text-white/80">LPR Registry Logs</h2>
                  </div>
-                 <button onClick={clearLPRLogs} className="px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black text-white/20 hover:text-red-400 transition-all uppercase tracking-widest flex items-center gap-2">
+                 <button onClick={clearLPRLogs} className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-white/5 border border-slate-300 dark:border-white/5 text-[10px] font-black text-slate-500 dark:text-white/20 hover:text-red-500 dark:hover:text-red-400 transition-all uppercase tracking-widest flex items-center gap-2">
                    <Trash2 size={14} /> Wipe Data
                  </button>
               </div>
 
               <div className="relative">
-                <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-white/20" />
+                <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/20" />
                 <input 
                   type="text" 
                   placeholder="Search plates or requestors..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#1E1E2E] border border-white/10 rounded-2xl py-4.5 pl-14 pr-6 text-sm text-white focus:outline-none transition-all placeholder:text-white/20 shadow-2xl"
+                  className="w-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/10 rounded-2xl py-4.5 pl-14 pr-6 text-sm text-slate-900 dark:text-white focus:outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-white/20 shadow-2xl"
                 />
               </div>
 
               <div className="grid grid-cols-1 gap-4">
                 {filteredLogs.length === 0 ? (
-                  <div className="py-24 flex flex-col items-center justify-center bg-[#1E1E2E]/30 rounded-[3rem] border border-dashed border-white/10 opacity-40">
-                    <Scan size={64} className="text-white/20 mb-4" />
-                    <p className="text-xs font-black uppercase tracking-[0.2em]">No logs recorded</p>
+                  <div className="py-24 flex flex-col items-center justify-center bg-white/50 dark:bg-[#1E1E2E]/30 rounded-[3rem] border border-dashed border-slate-200 dark:border-white/10 opacity-40">
+                    <Scan size={64} className="text-slate-300 dark:text-white/20 mb-4" />
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-white/30">No logs recorded</p>
                   </div>
                 ) : (
                   filteredLogs.map(log => {
@@ -507,44 +619,46 @@ export const LPRDetectionPage = () => {
                         key={log.id} 
                         onClick={() => setSelectedLog(log)}
                         className={`group relative overflow-hidden rounded-[2.5rem] border transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex p-5 gap-5 shadow-2xl ${
-                          isApproved ? 'bg-emerald-500/[0.03] border-emerald-500/20 shadow-emerald-500/5' :
-                          isRed ? 'bg-red-500/[0.03] border-red-500/20 shadow-red-500/5' :
-                          isAmber ? 'bg-orange-500/[0.03] border-orange-500/20 shadow-orange-500/5' :
-                          'bg-[#1E1E2E]/80 border-white/5'
+                          isApproved ? 'bg-emerald-50 dark:bg-emerald-500/[0.03] border-emerald-200 dark:border-emerald-500/20 shadow-emerald-500/5' :
+                          isRed ? 'bg-red-50 dark:bg-red-500/[0.03] border-red-200 dark:border-red-500/20 shadow-red-500/5' :
+                          isAmber ? 'bg-orange-50 dark:bg-orange-500/[0.03] border-orange-200 dark:border-orange-500/20 shadow-orange-500/5' :
+                          'bg-white dark:bg-[#1E1E2E]/80 border-slate-200 dark:border-white/5'
                         }`}
                       >
-                         <div className="w-28 aspect-video rounded-3xl overflow-hidden bg-black shrink-0 border border-white/10 relative shadow-lg">
+                         <div className="w-28 aspect-video rounded-3xl overflow-hidden bg-black shrink-0 border border-slate-200 dark:border-white/10 relative shadow-lg">
                            <img src={log.thumbnail} alt="scan" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                            <div className="absolute bottom-2 left-2 right-2">
-                             <p className="text-[7px] font-black text-white/80 truncate uppercase tracking-tighter">{log.make} {log.model}</p>
+                             <p className="text-[7px] font-black text-white/80 truncate uppercase tracking-tighter">
+                                {log.vehicleColor || 'UNKNOWN'}
+                             </p>
                            </div>
                          </div>
 
                          <div className="flex-1 min-w-0 flex flex-col justify-between py-1">
                            <div className="flex items-start justify-between">
                              <div>
-                               <h3 className="bg-white text-black px-3 py-1 rounded-xl font-mono font-black text-base tracking-widest inline-block mb-2 shadow-xl">
+                               <h3 className="bg-slate-900 dark:bg-white text-white dark:text-black px-3 py-1 rounded-xl font-mono font-black text-base tracking-widest inline-block mb-2 shadow-xl">
                                  {log.plate}
                                </h3>
                                <div className="flex items-center gap-1.5">
                                  <div className={`w-1.5 h-1.5 rounded-full ${isApproved ? 'bg-emerald-500' : isRed ? 'bg-red-500' : 'bg-orange-500'}`}></div>
                                  <p className={`text-[10px] font-black uppercase tracking-widest ${
-                                   isApproved ? 'text-emerald-400' : 
-                                   isRed ? 'text-red-400' : 
-                                   isAmber ? 'text-orange-400' : 'text-white/40'
+                                   isApproved ? 'text-emerald-600 dark:text-emerald-400' : 
+                                   isRed ? 'text-red-600 dark:text-red-400' : 
+                                   isAmber ? 'text-orange-600 dark:text-orange-400' : 'text-slate-400 dark:text-white/40'
                                  }`}>
                                    {log.status} • <span className="text-[8px] opacity-60">{isEntry ? 'ENTRY SCAN' : 'EXIT SCAN'}</span>
                                  </p>
                                </div>
-                               <p className="text-[9px] font-bold text-white/20 uppercase mt-0.5 tracking-tight">
+                               <p className="text-[9px] font-bold text-slate-400 dark:text-white/20 uppercase mt-0.5 tracking-tight">
                                   {isApproved ? 'Gate will open' : 
                                    isRed ? 'Gate will NOT open' :
                                    isAmber ? 'Awaiting approval' : 'No record found'}
                                </p>
                              </div>
                              <div className="text-right">
-                                <p className="text-[10px] font-black text-white/30 uppercase tracking-tight">
+                                <p className="text-[10px] font-black text-slate-400 dark:text-white/30 uppercase tracking-tight">
                                   {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </p>
                              </div>
@@ -552,8 +666,8 @@ export const LPRDetectionPage = () => {
 
                            <div className="mt-4 flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-white/60">
-                                    <User size={12} className="text-blue-500/50" />
+                                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-white/60">
+                                    {log.isVip ? <Crown size={12} className="text-amber-500" /> : <User size={12} className="text-blue-500/50" />}
                                     <span className="truncate max-w-[100px]">{log.requestorName || 'N/A'}</span>
                                  </div>
                               </div>

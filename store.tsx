@@ -1,12 +1,13 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Visitor, AccessLog, VisitorType, TransportMode, VisitorStatus, QRType, User, UserRole, Notification, BlacklistRecord, LPRLog } from './types';
+import { Visitor, AccessLog, VisitorType, TransportMode, VisitorStatus, QRType, User, UserRole, Notification, BlacklistRecord, LPRLog, VipRecord, VipType } from './types';
 
 interface StoreContextType {
   visitors: Visitor[];
   logs: AccessLog[];
   notifications: Notification[];
   blacklist: BlacklistRecord[];
+  vipRecords: VipRecord[];
   lprLogs: LPRLog[];
   currentUser: User | null;
   addVisitor: (visitor: Omit<Visitor, 'id' | 'qrType' | 'status'> & { status?: VisitorStatus }) => Visitor;
@@ -23,6 +24,12 @@ interface StoreContextType {
   addToBlacklist: (record: Omit<BlacklistRecord, 'id' | 'timestamp' | 'status'>) => void;
   removeFromBlacklist: (id: string) => void;
   checkBlacklist: (ic?: string, plate?: string, phone?: string) => BlacklistRecord | undefined;
+  // VIP Methods
+  addVip: (record: Omit<VipRecord, 'id' | 'createdAt' | 'status'>) => void;
+  updateVip: (id: string, updates: Partial<VipRecord>, updatedBy?: string) => void;
+  updateVipMovement: (id: string, mode: 'ENTRY' | 'EXIT', timestamp: string) => void;
+  deactivateVip: (id: string, updatedBy?: string) => void;
+  checkVip: (plate: string) => VipRecord | undefined;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -57,6 +64,28 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [blacklist, setBlacklist] = useState<BlacklistRecord[]>([]);
   const [lprLogs, setLprLogs] = useState<LPRLog[]>([]);
+  // Mock VIP Data
+  const [vipRecords, setVipRecords] = useState<VipRecord[]>([
+    {
+      id: 'vip-001',
+      vipType: VipType.VVIP,
+      designation: 'Director-General',
+      name: 'Datuk Seri Ahmad',
+      contact: '+60123456789',
+      licensePlate: 'VIP 1',
+      vehicleColor: 'Black',
+      validFrom: new Date().toISOString(),
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+      autoApprove: true,
+      autoOpenGate: true,
+      accessPoints: ['ENTRY_LPR', 'EXIT_LPR'],
+      reason: 'Official Visit',
+      createdBy: 'System',
+      createdAt: new Date().toISOString(),
+      status: 'ACTIVE'
+    }
+  ]);
+  
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('vms_session');
     return saved ? JSON.parse(saved) : null;
@@ -76,6 +105,98 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const phoneMatch = normPhone && normalizePhone(record.phone) === normPhone;
 
       return icMatch || plateMatch || phoneMatch;
+    });
+  };
+
+  const logAccess = (logData: Omit<AccessLog, 'id' | 'timestamp'>) => {
+    const newLog: AccessLog = {
+      ...logData,
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+    };
+    setLogs(prev => [newLog, ...prev]);
+
+    if (logData.action === 'ENTRY' || logData.action === 'EXIT') {
+        setVisitors(prev => prev.map(v => {
+            if (v.id === logData.visitorId) {
+                if (logData.action === 'ENTRY' && !v.timeIn) {
+                    return { ...v, timeIn: new Date().toISOString() };
+                }
+                if (logData.action === 'EXIT') {
+                    return { ...v, timeOut: new Date().toISOString() };
+                }
+            }
+            return v;
+        }));
+    }
+  };
+
+  // VIP Logic
+  const addVip = (record: Omit<VipRecord, 'id' | 'createdAt' | 'status'>) => {
+    const newVip: VipRecord = {
+      ...record,
+      id: `vip-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      status: 'ACTIVE'
+    };
+    setVipRecords(prev => [newVip, ...prev]);
+  };
+
+  const updateVip = (id: string, updates: Partial<VipRecord>, updatedBy?: string) => {
+    setVipRecords(prev => prev.map(v => {
+      if (v.id === id) {
+        const updatedRecord = { 
+          ...v, 
+          ...updates, 
+          updatedBy: updatedBy || v.updatedBy, 
+          updatedAt: new Date().toISOString() 
+        };
+        // Audit log
+        if (updatedBy) {
+          logAccess({
+            visitorId: id,
+            visitorName: v.name,
+            action: 'VIP_UPDATE',
+            location: 'SYSTEM',
+            method: 'SYSTEM',
+            details: `VIP updated by ${updatedBy}`
+          });
+        }
+        return updatedRecord;
+      }
+      return v;
+    }));
+  };
+
+  const updateVipMovement = (id: string, mode: 'ENTRY' | 'EXIT', timestamp: string) => {
+    setVipRecords(prev => prev.map(v => {
+      if (v.id === id) {
+        if (mode === 'ENTRY') {
+          return { ...v, lastEntryTime: timestamp };
+        } else {
+          return { ...v, lastExitTime: timestamp };
+        }
+      }
+      return v;
+    }));
+  };
+
+  const deactivateVip = (id: string, updatedBy?: string) => {
+    updateVip(id, { status: 'DEACTIVATED' }, updatedBy);
+  };
+
+  const checkVip = (plate: string) => {
+    const normPlate = normalizePlate(plate);
+    const now = new Date();
+    
+    return vipRecords.find(v => {
+      if (v.status !== 'ACTIVE') return false;
+      if (normalizePlate(v.licensePlate) !== normPlate) return false;
+      
+      const start = new Date(v.validFrom);
+      const end = new Date(v.validUntil);
+      
+      return now >= start && now <= end;
     });
   };
 
@@ -162,29 +283,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
-  const logAccess = (logData: Omit<AccessLog, 'id' | 'timestamp'>) => {
-    const newLog: AccessLog = {
-      ...logData,
-      id: `log-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-    };
-    setLogs(prev => [newLog, ...prev]);
-
-    if (logData.action === 'ENTRY' || logData.action === 'EXIT') {
-        setVisitors(prev => prev.map(v => {
-            if (v.id === logData.visitorId) {
-                if (logData.action === 'ENTRY' && !v.timeIn) {
-                    return { ...v, timeIn: new Date().toISOString() };
-                }
-                if (logData.action === 'EXIT') {
-                    return { ...v, timeOut: new Date().toISOString() };
-                }
-            }
-            return v;
-        }));
-    }
-  };
-
   const addLPRLog = (logData: Omit<LPRLog, 'id' | 'timestamp'>) => {
     const newLog: LPRLog = {
       ...logData,
@@ -205,6 +303,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         logs, 
         notifications,
         blacklist,
+        vipRecords,
         lprLogs,
         currentUser,
         addVisitor, 
@@ -220,7 +319,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         logout,
         addToBlacklist,
         removeFromBlacklist,
-        checkBlacklist
+        checkBlacklist,
+        addVip,
+        updateVip,
+        updateVipMovement,
+        deactivateVip,
+        checkVip
     }}>
       {children}
     </StoreContext.Provider>
