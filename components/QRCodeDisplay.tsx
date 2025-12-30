@@ -1,6 +1,7 @@
 
 import React from 'react';
 import QRCode from 'react-qr-code';
+import { ShieldCheck } from 'lucide-react';
 import { QRType } from '../types';
 
 interface QRCodeDisplayProps {
@@ -36,6 +37,26 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ value, type, label
     //         <p className="text-white/60 text-center text-sm">Access Denied</p>
     //     </div>
     // );
+    return (
+  <div className="w-full rounded-3xl border border-slate-300/20 dark:border-white/10 bg-slate-100/60 dark:bg-white/5 p-6 text-center">
+    <div className="mx-auto mb-3 w-14 h-14 rounded-2xl bg-slate-200 dark:bg-white/10 flex items-center justify-center">
+      <ShieldCheck className="text-slate-600 dark:text-white/70" size={28} />
+    </div>
+
+    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-white/40">
+      Access Status
+    </p>
+
+    <h3 className="mt-1 text-lg font-extrabold text-slate-900 dark:text-white">
+      LPR Access
+    </h3>
+
+    <p className="mt-3 text-[11px] text-slate-600 dark:text-white/60 font-semibold">
+      QR code not required. Vehicle access will be handled via license plate recognition.
+    </p>
+  </div>
+);
+
   }
 
   return (

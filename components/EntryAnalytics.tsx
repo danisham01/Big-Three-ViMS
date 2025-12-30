@@ -102,7 +102,7 @@ export const EntryAnalytics = () => {
                    <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-3 rounded-2xl flex items-center justify-between">
                       <div className="flex items-center gap-2">
                          <CheckCircle2 size={14} className="text-emerald-500" />
-                         <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Approved</span>
+                         <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Passed</span>
                       </div>
                       <span className="text-lg font-black text-emerald-800 dark:text-emerald-100">{counts.approved}</span>
                    </div>
@@ -110,7 +110,7 @@ export const EntryAnalytics = () => {
                    <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 p-3 rounded-2xl flex items-center justify-between">
                       <div className="flex items-center gap-2">
                          <XCircle size={14} className="text-red-500" />
-                         <span className="text-[9px] font-bold text-red-700 dark:text-red-300 uppercase tracking-wider">Rejected</span>
+                         <span className="text-[9px] font-bold text-red-700 dark:text-red-300 uppercase tracking-wider">Blocked</span>
                       </div>
                       <span className="text-lg font-black text-red-800 dark:text-red-100">{counts.rejected}</span>
                    </div>
@@ -118,7 +118,7 @@ export const EntryAnalytics = () => {
                    <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 p-3 rounded-2xl flex items-center justify-between">
                       <div className="flex items-center gap-2">
                          <Clock size={14} className="text-orange-500" />
-                         <span className="text-[9px] font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">Pending</span>
+                         <span className="text-[9px] font-bold text-orange-700 dark:text-orange-300 uppercase tracking-wider">Hold</span>
                       </div>
                       <span className="text-lg font-black text-orange-800 dark:text-orange-100">{counts.pending}</span>
                    </div>
