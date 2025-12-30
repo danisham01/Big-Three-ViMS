@@ -54,8 +54,8 @@ const Navigation = () => {
                   <span className="text-[10px] font-medium">Status</span>
               </Link>
 
-              {/* Staff/Admin - VIP Module */}
-              {currentUser && (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.STAFF) && (
+              {/* Admin-only VIP Module */}
+              {currentUser && currentUser.role === UserRole.ADMIN && (
                   <Link to="/vip" className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${isActive('/vip') ? 'text-amber-500' : 'text-slate-400 dark:text-gray-500'}`}>
                       <Crown size={22} />
                       <span className="text-[10px] font-medium">VIP</span>
