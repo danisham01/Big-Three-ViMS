@@ -234,7 +234,7 @@ export const VisitorLanding = () => {
       <div className="flex flex-col items-center justify-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
         <Logo size="xl" className="mb-6" />
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 text-center">Welcome to ViMS</h1>
-        <p className="text-slate-500 dark:text-white/40 text-center text-sm font-medium">(Visitor management system)</p>
+        <p className="text-slate-500 dark:text-white/40 text-center text-sm font-medium">(Visitor Management System)</p>
         <p className="text-slate-600 dark:text-white/60 text-center text-sm mt-4 max-w-[200px]">Please select your sign-in method to get started.</p>
       </div>
 
