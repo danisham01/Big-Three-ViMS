@@ -72,6 +72,81 @@ const generateUniqueCode = (existingVisitors: Visitor[]) => {
 const normalizePlate = (plate?: string) => plate?.toUpperCase().replace(/[^A-Z0-9]/g, '') || '';
 const normalizePhone = (phone?: string) => phone?.replace(/[^0-9+]/g, '') || '';
 const toFirestore = <T,>(data: T): T => JSON.parse(JSON.stringify(data));
+const SMTP_RELAY_URL = import.meta.env.VITE_SMTP_RELAY_URL;
+const SMTP_FROM = import.meta.env.VITE_SMTP_FROM || 'no-reply@bigthreevms.local';
+
+let hasWarnedMissingSmtp = false;
+
+const sendEmailViaSmtp = async ({ to, subject, html, text }: { to?: string; subject: string; html: string; text: string }) => {
+  if (!to) return;
+  if (!SMTP_RELAY_URL) {
+    if (!hasWarnedMissingSmtp) {
+      console.warn('SMTP relay URL not configured. Set VITE_SMTP_RELAY_URL to enable confirmation emails.');
+      hasWarnedMissingSmtp = true;
+    }
+    return;
+  }
+
+  try {
+    await fetch(SMTP_RELAY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to,
+        from: SMTP_FROM,
+        subject,
+        html,
+        text
+      })
+    });
+  } catch (error) {
+    console.error('Failed to send confirmation email', error);
+  }
+};
+
+const sendRegistrationConfirmationEmail = async (v: Visitor) => {
+  if (!v.email) return;
+
+  const passUrl = `${window.location.origin}/#/visitor/wallet/${v.id}`;
+  const subject = `[RECEIVED] Your visit request (Ref: ${v.id})`;
+  const text = [
+    `Hello ${v.name},`,
+    '',
+    'We received your visit registration. Keep this email as your reference.',
+    '',
+    `Visitor ID: ${v.id}`,
+    `Visit Date: ${new Date(v.visitDate).toLocaleString()}`,
+    v.endDate ? `End Date: ${new Date(v.endDate).toLocaleString()}` : 'End Date: Full day access',
+    `Purpose: ${v.purpose}`,
+    `Transport: ${v.transportMode === TransportMode.CAR ? 'Car' : 'Non-car'}`,
+    v.licensePlate ? `Plate: ${v.licensePlate}` : '',
+    '',
+    `Digital Pass (once approved): ${passUrl}`,
+    '',
+    'Thank you,',
+    'Big Three ViMS'
+  ].filter(Boolean).join('\n');
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; color: #111; line-height: 1.6;">
+      <h2 style="margin: 0 0 12px;">Visit request received</h2>
+      <p style="margin: 0 0 12px;">Hello ${v.name},</p>
+      <p style="margin: 0 0 12px;">We received your visit registration. Keep this email as your reference.</p>
+      <div style="padding: 12px; background: #f5f5f5; border-radius: 10px; margin-bottom: 12px;">
+        <p style="margin: 0;"><strong>Visitor ID:</strong> ${v.id}</p>
+        <p style="margin: 4px 0;"><strong>Visit Date:</strong> ${new Date(v.visitDate).toLocaleString()}</p>
+        <p style="margin: 4px 0;"><strong>End Date:</strong> ${v.endDate ? new Date(v.endDate).toLocaleString() : 'Full day access'}</p>
+        <p style="margin: 4px 0;"><strong>Purpose:</strong> ${v.purpose}</p>
+        <p style="margin: 4px 0;"><strong>Transport:</strong> ${v.transportMode === TransportMode.CAR ? 'Car' : 'Non-car'}</p>
+        ${v.licensePlate ? `<p style="margin: 4px 0;"><strong>Plate:</strong> ${v.licensePlate}</p>` : ''}
+      </div>
+      <p style="margin: 0 0 12px;">Your digital pass will be available here once approved: <a href="${passUrl}" target="_blank" rel="noreferrer">${passUrl}</a></p>
+      <p style="margin: 0 0 12px;">Thank you,<br/>Big Three ViMS</p>
+    </div>
+  `;
+
+  await sendEmailViaSmtp({ to: v.email, subject, html, text });
+};
 
 const SERVICE_PURPOSES = [
   'E-Hailing (Driver)',
@@ -862,6 +937,7 @@ Big Three
     };
     setVisitors(prev => [newVisitor, ...prev]);
     void persistVisitor(newVisitor);
+    void sendRegistrationConfirmationEmail(newVisitor);
     return newVisitor;
   };
 
