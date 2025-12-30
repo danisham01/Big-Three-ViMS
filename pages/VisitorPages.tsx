@@ -430,14 +430,15 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
           <p className="text-slate-500 dark:text-white/50 text-sm">Complete your details for building access.</p>
       </div>
 
-      {blacklistError && (
-        <div className="mb-6 p-6 bg-red-100 dark:bg-red-600/10 border-2 border-red-200 dark:border-red-500/30 rounded-3xl animate-in zoom-in text-center">
-          <Ban size={48} className="text-red-500 mx-auto mb-3" />
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Access Denied</h3>
-          <p className="text-red-600 dark:text-red-200/70 text-sm font-medium leading-relaxed">{blacklistError}</p>
-          <p className="text-[10px] text-slate-400 dark:text-white/30 mt-4 uppercase tracking-[0.2em] font-black">Ref: BLACKLIST_ENTRY_ATTEMPT</p>
-        </div>
-      )}
+      {blacklistError &&
+        (blacklistError.toLowerCase().includes('ban') || blacklistError.toLowerCase().includes('blacklist')) && (
+          <div className="mb-6 p-6 bg-red-100 dark:bg-red-600/10 border-2 border-red-200 dark:border-red-500/30 rounded-3xl animate-in zoom-in text-center">
+            <Ban size={48} className="text-red-500 mx-auto mb-3" />
+            {/* <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2"></h3> */}
+            <p className="text-red-600 dark:text-red-200/70 text-sm font-medium leading-relaxed">{blacklistError}</p>
+            <p className="text-[10px] text-slate-400 dark:text-white/30 mt-4 uppercase tracking-[0.2em] font-black">Ref: BLACKLIST_ENTRY_ATTEMPT</p>
+          </div>
+        )}
       
       <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
         <GlassCard title="Identity Verification" className="!p-5 !pb-2">
