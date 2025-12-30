@@ -55,8 +55,9 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
             const trimmedInput = input.trim().toUpperCase();
 
             if (allowLPR && !trimmedInput.startsWith('V-') && trimmedInput.length > 3) {
-                visitor = getVisitorByPlate(trimmedInput);
-                method = 'LPR';
+                visitor = getVisitorByCode(trimmedInput);
+                // visitor = getVisitorByPlate(trimmedInput);
+                // method = 'LPR';
             } else {
                 visitor = getVisitorByCode(trimmedInput);
             }
@@ -151,7 +152,7 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
             <div className="flex-1 flex flex-col justify-center gap-4">
                 <div className="relative transform transition-transform duration-300 group-focus-within:scale-[1.02]">
                     <Input 
-                        placeholder={allowLPR ? "QR or License Plate" : "Scan QR Code"}
+                        placeholder={allowLPR ? "Scan QR Code" : "Scan QR Code"}
                         value={input}
                         disabled={isLoading}
                         onChange={(e) => setInput(e.target.value)}
