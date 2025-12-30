@@ -31,11 +31,11 @@ export const QRCodeDisplay: React.FC<QRCodeDisplayProps> = ({ value, type, label
   };
 
   if (type === QRType.NONE) {
-    return (
-        <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-white/20 rounded-xl bg-white/5">
-            <p className="text-white/60 text-center text-sm">Access Denied</p>
-        </div>
-    );
+    // return (
+    //     <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-white/20 rounded-xl bg-white/5">
+    //         <p className="text-white/60 text-center text-sm">Access Denied</p>
+    //     </div>
+    // );
   }
 
   return (
