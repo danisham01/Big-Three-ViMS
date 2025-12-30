@@ -7,6 +7,8 @@ import { EntryAnalytics } from '../components/EntryAnalytics';
 import { VisitorStatus, QRType, UserRole, TransportMode } from '../types';
 import { Scan, AlertTriangle, Unlock, LogOut, CheckCircle2, ShieldAlert, Ban, UserCheck, Crown, User, Clock } from 'lucide-react';
 
+const normalizePlate = (plate?: string) => plate?.toUpperCase().replace(/[^A-Z0-9]/g, '') || '';
+
 const LiveDuration = ({ startTime }: { startTime: string }) => {
   const [duration, setDuration] = useState('');
   useEffect(() => {
@@ -197,7 +199,7 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
 
 export const GuardConsole = () => {
     const navigate = useNavigate();
-    const { logAccess, currentUser, logout, visitors, vipRecords } = useStore();
+    const { logAccess, currentUser, logout, visitors, vipRecords, lprScanRecords } = useStore();
     const [manualCode, setManualCode] = useState('');
     const [isReleasing, setIsReleasing] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -209,32 +211,58 @@ export const GuardConsole = () => {
     }, [currentUser, navigate]);
 
     const liveVisitors = useMemo(() => {
+        const merged = new Map<string, { id: string; name: string; type: string; plate?: string; entryAt?: string; isVip: boolean }>();
+
         // 1. Regular Visitors: timeIn exists, timeOut does not
-        const regular = visitors.filter(v => v.timeIn && !v.timeOut).map(v => ({
-            id: v.id,
-            name: v.name,
-            type: 'VISITOR',
-            plate: v.licensePlate,
-            transport: v.transportMode,
-            entryTime: v.timeIn!,
-            isVip: false
-        }));
+        visitors.filter(v => v.timeIn && !v.timeOut).forEach(v => {
+            const norm = normalizePlate(v.licensePlate);
+            merged.set(norm || v.id, {
+                id: v.id,
+                name: v.name,
+                type: 'VISITOR',
+                plate: v.licensePlate,
+                entryAt: v.timeIn!,
+                isVip: false
+            });
+        });
     
         // 2. VIPs: lastEntryTime exists, and (lastExitTime missing OR entry > exit)
-        const vips = vipRecords.filter(v => 
+        vipRecords.filter(v => 
             v.lastEntryTime && (!v.lastExitTime || new Date(v.lastEntryTime) > new Date(v.lastExitTime))
-        ).map(v => ({
-            id: v.id,
-            name: v.name,
-            type: v.vipType,
-            plate: v.licensePlate,
-            transport: TransportMode.CAR, // VIPs typically use cars
-            entryTime: v.lastEntryTime!,
-            isVip: true
-        }));
+        ).forEach(v => {
+            const norm = normalizePlate(v.licensePlate);
+            merged.set(norm || v.id, {
+                id: v.id,
+                name: v.name,
+                type: v.vipType,
+                plate: v.licensePlate,
+                entryAt: v.lastEntryTime!,
+                isVip: true
+            });
+        });
+
+        // 3. LPR-only records (unknowns and any plate without exit)
+        Object.values(lprScanRecords)
+          .filter(rec => rec.entryAt && !rec.exitAt && rec.outcome !== 'BLOCKED')
+          .forEach(rec => {
+            const norm = normalizePlate(rec.plate);
+            const existing = merged.get(norm);
+            if (existing) {
+                existing.entryAt = rec.entryAt || existing.entryAt;
+                return;
+            }
+            merged.set(norm || `lpr-${rec.plate}`, {
+                id: `lpr-${rec.plate}`,
+                name: 'UNIDENTIFIED',
+                type: 'UNKNOWN',
+                plate: rec.plate,
+                entryAt: rec.entryAt!,
+                isVip: false
+            });
+          });
     
-        return [...vips, ...regular].sort((a, b) => new Date(b.entryTime).getTime() - new Date(a.entryTime).getTime());
-    }, [visitors, vipRecords]);
+        return Array.from(merged.values()).sort((a, b) => new Date(b.entryAt || 0).getTime() - new Date(a.entryAt || 0).getTime());
+    }, [visitors, vipRecords, lprScanRecords]);
 
     if (!currentUser) return null;
 
@@ -363,7 +391,7 @@ export const GuardConsole = () => {
                                         </div>
                                         <div className="flex items-center justify-end gap-1 text-[10px] text-slate-500 dark:text-white/50">
                                             <Clock size={12} />
-                                            <LiveDuration startTime={item.entryTime} />
+                                            <LiveDuration startTime={item.entryAt || ''} />
                                         </div>
                                     </div>
                                 </div>

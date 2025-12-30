@@ -4,8 +4,32 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GoogleGenAI, Type } from "@google/genai";
 import { useStore } from '../store';
 import { GlassCard, Button, LoadingOverlay, Toast, Spinner, StatusBadge, ConfirmModal } from '../components/GlassComponents';
-import { Visitor, VisitorStatus, TransportMode, LPRLog, UserRole, VipType, VipRecord, VEHICLE_COLORS } from '../types';
+import { Visitor, VisitorStatus, TransportMode, LPRLog, UserRole, VipType, VipRecord, VEHICLE_COLORS, LprScanRecord } from '../types';
 import { ArrowLeft, Camera, Scan, Car, ShieldCheck, AlertCircle, Ban, RefreshCw, UserCheck, Briefcase, Check, Search, Trash2, ListFilter, Info, MessageSquare, ChevronDown, LogOut, History, X, Phone, User, Clock, ShieldAlert, ExternalLink, Activity, LogIn, LogOut as LogOutIcon, Crown, Timer, Palette } from 'lucide-react';
+
+const normalizePlate = (plate?: string) => plate?.toUpperCase().replace(/[^A-Z0-9]/g, '') || '';
+
+const formatDuration = (entryAt?: string, exitAt?: string, nowMs?: number) => {
+  if (!entryAt) return 'Not available';
+  const start = new Date(entryAt).getTime();
+  const end = exitAt ? new Date(exitAt).getTime() : (nowMs ?? Date.now());
+
+  if (isNaN(start) || isNaN(end) || end < start) return 'Not available';
+
+  const diffMs = end - start;
+  const hours = Math.floor(diffMs / 3600000);
+  const minutes = Math.floor((diffMs % 3600000) / 60000);
+  const seconds = Math.floor((diffMs % 60000) / 1000);
+
+  const minuteLabel = hours ? minutes.toString().padStart(2, '0') : `${minutes}`;
+  const durationLabel = hours ? `${hours}h ${minuteLabel}m` : `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+
+  if (!exitAt) {
+    return `In progress (${durationLabel})`;
+  }
+
+  return durationLabel;
+};
 
 const LPR_SCHEMA = {
   type: Type.OBJECT,
@@ -21,50 +45,27 @@ const LPR_SCHEMA = {
   required: ['plate', 'color', 'confidence']
 };
 
-const ScanDetailModal = ({ log, onClose, visitors, blacklist, vipRecords }: { log: LPRLog | null, onClose: () => void, visitors: Visitor[], blacklist: any[], vipRecords: VipRecord[] }) => {
+const ScanDetailModal = ({ log, onClose, visitors, blacklist, vipRecords, lprScanRecords }: { log: LPRLog | null, onClose: () => void, visitors: Visitor[], blacklist: any[], vipRecords: VipRecord[], lprScanRecords: Record<string, LprScanRecord> }) => {
   if (!log) return null;
+
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const visitorMatch = !log.isVip && log.visitorId ? visitors.find(v => v.id === log.visitorId) : null;
   const vipMatch = log.isVip && log.visitorId ? vipRecords.find(v => v.id === log.visitorId) : null;
   const blacklistMatch = log.status === 'Blacklisted' ? blacklist.find(b => b.licensePlate?.toUpperCase().replace(/[^A-Z0-9]/g, '') === log.plate) : null;
+  const scanRecord = lprScanRecords[normalizePlate(log.plate)];
 
   // Authoritative Data sources
-  const entryTime = log.isVip ? vipMatch?.lastEntryTime : visitorMatch?.timeIn;
-  const exitTime = log.isVip ? vipMatch?.lastExitTime : visitorMatch?.timeOut;
+  const entryTime = log.isVip ? vipMatch?.lastEntryTime : (visitorMatch?.timeIn || scanRecord?.entryAt);
+  const exitTime = log.isVip ? vipMatch?.lastExitTime : (visitorMatch?.timeOut || scanRecord?.exitAt);
   const recordedColor = log.vehicleColor || (log.isVip ? vipMatch?.vehicleColor : visitorMatch?.vehicleColor);
 
-  // Robust Duration Calculation
-  let durationDisplay = null;
-  
-  if (entryTime) {
-    const start = new Date(entryTime).getTime();
-    const end = exitTime ? new Date(exitTime).getTime() : Date.now();
-
-    if (!isNaN(start) && !isNaN(end)) {
-      if (end < start) {
-        durationDisplay = "Invalid timestamps";
-      } else {
-        const diffMs = end - start;
-        const minutesTotal = Math.floor(diffMs / 60000);
-        
-        // Format logic
-        let timeStr = "";
-        if (minutesTotal < 60) {
-          timeStr = `${minutesTotal}m`;
-        } else {
-          const hrs = Math.floor(minutesTotal / 60);
-          const mins = minutesTotal % 60;
-          timeStr = `${hrs}h ${mins}m`;
-        }
-
-        if (!exitTime) {
-          durationDisplay = `In progress (${timeStr})`;
-        } else {
-          durationDisplay = timeStr;
-        }
-      }
-    }
-  }
+  const durationDisplay = formatDuration(entryTime, exitTime, nowTick);
+  const formatDateTime = (value?: string) => value ? new Date(value).toLocaleString() : 'Not recorded';
 
   const getColorDot = (color?: string) => {
       const c = color?.toLowerCase() || 'gray';
@@ -180,12 +181,10 @@ const ScanDetailModal = ({ log, onClose, visitors, blacklist, vipRecords }: { lo
                  </div>
               </div>
               
-              {durationDisplay && (
-                <div className="pt-4 border-t border-slate-200 dark:border-white/5 flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400 animate-in fade-in">
-                   <Timer size={16} />
-                   <p className="text-xs font-black uppercase tracking-widest">Duration: {durationDisplay}</p>
-                </div>
-              )}
+              <div className="pt-4 border-t border-slate-200 dark:border-white/5 flex items-center justify-center gap-2 text-indigo-600 dark:text-indigo-400 animate-in fade-in">
+                 <Timer size={16} />
+                 <p className="text-xs font-black uppercase tracking-widest">Duration: {durationDisplay}</p>
+              </div>
             </div>
           </div>
 
@@ -222,7 +221,7 @@ const ScanDetailModal = ({ log, onClose, visitors, blacklist, vipRecords }: { lo
 export const LPRDetectionPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { visitors, checkBlacklist, checkVip, blacklist, vipRecords, lprLogs, addLPRLog, clearLPRLogs, updateVisitor, updateVipMovement, currentUser, logout } = useStore();
+  const { visitors, checkBlacklist, checkVip, blacklist, vipRecords, lprLogs, lprScanRecords, addLPRLog, clearLPRLogs, updateVisitor, updateVipMovement, updateLprScanRecord, currentUser, logout } = useStore();
   
   const currentView = searchParams.get('view') || 'scanner';
   const [lprMode, setLprMode] = useState<'ENTRY' | 'EXIT'>('ENTRY');
@@ -342,6 +341,7 @@ export const LPRDetectionPage = () => {
         }
 
         const now = new Date().toISOString();
+        const scanRecordStatus: LprScanRecord['status'] = (vip || match) ? 'KNOWN' : 'UNKNOWN';
         
         // 1. UPDATE VISITOR MOVEMENT
         if (status === 'Approved' && match) {
@@ -355,6 +355,18 @@ export const LPRDetectionPage = () => {
         // 2. UPDATE VIP MOVEMENT
         if (status === 'Approved' && vip) {
            updateVipMovement(vip.id, lprMode, now);
+        }
+
+        const isBlacklistedEntry = status === 'Blacklisted' && lprMode === 'ENTRY';
+        const isBlacklistedExit = status === 'Blacklisted' && lprMode === 'EXIT';
+
+        if (isBlacklistedEntry) {
+          updateLprScanRecord(plate, lprMode, scanRecordStatus, { attemptedOnly: true, outcome: 'BLOCKED', reason: 'BLACKLISTED' });
+        } else if (isBlacklistedExit) {
+          updateLprScanRecord(plate, lprMode, scanRecordStatus, { attemptedOnly: true, outcome: 'BLOCKED', reason: 'BLACKLISTED' });
+        } else {
+          const outcome: LprScanRecord['outcome'] = status === 'Approved' ? 'PASSED' : (status === 'Pending' ? 'HOLD' : 'UNKNOWN');
+          updateLprScanRecord(plate, lprMode, scanRecordStatus, { outcome });
         }
 
         addLPRLog({
@@ -436,6 +448,7 @@ export const LPRDetectionPage = () => {
         visitors={visitors} 
         blacklist={blacklist} 
         vipRecords={vipRecords}
+        lprScanRecords={lprScanRecords}
       />
       <ConfirmModal 
         show={showLogoutConfirm}

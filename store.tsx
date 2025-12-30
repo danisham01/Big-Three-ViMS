@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
-import { Visitor, AccessLog, VisitorType, TransportMode, VisitorStatus, QRType, User, UserRole, Notification, BlacklistRecord, LPRLog, VipRecord, VipType } from './types';
+import { Visitor, AccessLog, VisitorType, TransportMode, VisitorStatus, QRType, User, UserRole, Notification, BlacklistRecord, LPRLog, VipRecord, VipType, LprScanRecord } from './types';
 import { db } from './firebase';
 
 interface StoreContextType {
@@ -10,12 +10,14 @@ interface StoreContextType {
   blacklist: BlacklistRecord[];
   vipRecords: VipRecord[];
   lprLogs: LPRLog[];
+  lprScanRecords: Record<string, LprScanRecord>;
   currentUser: User | null;
   addVisitor: (visitor: Omit<Visitor, 'id' | 'qrType' | 'status' | 'createdAt'> & { status?: VisitorStatus }) => Visitor;
   updateVisitorStatus: (id: string, status: VisitorStatus, reason?: string) => void;
   updateVisitor: (id: string, updates: Partial<Visitor>) => void;
   logAccess: (log: Omit<AccessLog, 'id' | 'timestamp'>) => void;
   addLPRLog: (log: Omit<LPRLog, 'id' | 'timestamp'>) => void;
+  updateLprScanRecord: (plate: string, mode: 'ENTRY' | 'EXIT', status: LprScanRecord['status'], opts?: { attemptedOnly?: boolean; outcome?: LprScanRecord['outcome']; reason?: string }) => void;
   clearLPRLogs: () => void;
   markNotificationRead: (id: string) => void;
   getVisitorByCode: (code: string) => Visitor | undefined;
@@ -527,6 +529,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [blacklist, setBlacklist] = useState<BlacklistRecord[]>([]);
   const [lprLogs, setLprLogs] = useState<LPRLog[]>([]);
+  const [lprScanRecords, setLprScanRecords] = useState<Record<string, LprScanRecord>>({});
   
   const [vipRecords, setVipRecords] = useState<VipRecord[]>([
     {
@@ -559,13 +562,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [visSnap, logSnap, notifSnap, blSnap, vipSnap, lprSnap] = await Promise.all([
+        const [visSnap, logSnap, notifSnap, blSnap, vipSnap, lprSnap, lprRecordSnap] = await Promise.all([
           getDocs(collection(db, 'visitors')),
           getDocs(collection(db, 'logs')),
           getDocs(collection(db, 'notifications')),
           getDocs(collection(db, 'blacklist')),
           getDocs(collection(db, 'vipRecords')),
           getDocs(collection(db, 'lprLogs')),
+          getDocs(collection(db, 'lprScanRecords')),
         ]);
 
         const loadedVisitors = visSnap.docs.map(d => d.data() as Visitor);
@@ -574,6 +578,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         const loadedBlacklist = blSnap.docs.map(d => d.data() as BlacklistRecord);
         const loadedVip = vipSnap.docs.map(d => d.data() as VipRecord);
         const loadedLpr = lprSnap.docs.map(d => d.data() as LPRLog);
+        const loadedLprRecordsArray = lprRecordSnap.docs.map(d => d.data() as LprScanRecord);
+        const loadedLprRecords = loadedLprRecordsArray.reduce<Record<string, LprScanRecord>>((acc, rec) => {
+          acc[normalizePlate(rec.plate)] = rec;
+          return acc;
+        }, {});
 
         setVisitors(loadedVisitors.length ? loadedVisitors : initialVisitors);
         if (loadedLogs.length) setLogs(loadedLogs);
@@ -581,6 +590,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         if (loadedBlacklist.length) setBlacklist(loadedBlacklist);
         if (loadedVip.length) setVipRecords(loadedVip);
         if (loadedLpr.length) setLprLogs(loadedLpr);
+        if (loadedLprRecordsArray.length) setLprScanRecords(loadedLprRecords);
       } catch (error) {
         console.warn('Firestore load failed, falling back to local data.', error);
         setVisitors(initialVisitors);
@@ -659,6 +669,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await setDoc(doc(db, 'lprLogs', log.id), toFirestore(log));
     } catch (error) {
       console.warn('Failed to save LPR log to Firestore', error);
+    }
+  };
+
+  const persistLprScanRecord = async (record: LprScanRecord) => {
+    try {
+      await setDoc(doc(db, 'lprScanRecords', record.plate), toFirestore(record));
+    } catch (error) {
+      console.warn('Failed to save LPR scan record to Firestore', error);
     }
   };
 
@@ -1011,6 +1029,48 @@ Big Three
     }
   };
 
+  const updateLprScanRecord = (plate: string, mode: 'ENTRY' | 'EXIT', status: LprScanRecord['status'], opts?: { attemptedOnly?: boolean; outcome?: LprScanRecord['outcome']; reason?: string }) => {
+    const normalized = normalizePlate(plate);
+    if (!normalized) return;
+
+    const nowIso = new Date().toISOString();
+    let recordToPersist: LprScanRecord | null = null;
+
+    setLprScanRecords(prev => {
+      const existing = prev[normalized];
+      const nextStatus = status === 'KNOWN' ? 'KNOWN' : (existing?.status === 'KNOWN' ? 'KNOWN' : 'UNKNOWN');
+      const next: LprScanRecord = {
+        plate: normalized,
+        status: nextStatus,
+        entryAt: existing?.entryAt,
+        exitAt: existing?.exitAt,
+        attemptedAt: existing?.attemptedAt,
+        outcome: opts?.outcome || existing?.outcome,
+        reason: opts?.reason || existing?.reason,
+        gate: mode,
+        lastSeenAt: nowIso,
+      };
+
+      if (opts?.attemptedOnly) {
+        next.attemptedAt = nowIso;
+      } else {
+        if (mode === 'ENTRY' && !next.entryAt) {
+          next.entryAt = nowIso;
+        }
+        if (mode === 'EXIT') {
+          next.exitAt = nowIso;
+        }
+      }
+
+      recordToPersist = next;
+      return { ...prev, [normalized]: next };
+    });
+
+    if (recordToPersist) {
+      void persistLprScanRecord(recordToPersist);
+    }
+  };
+
   const addLPRLog = (logData: Omit<LPRLog, 'id' | 'timestamp'>) => {
     const newLog: LPRLog = {
       ...logData,
@@ -1037,12 +1097,14 @@ Big Three
         blacklist,
         vipRecords,
         lprLogs,
+        lprScanRecords,
         currentUser,
         addVisitor, 
         updateVisitorStatus, 
         updateVisitor,
         logAccess,
         addLPRLog,
+        updateLprScanRecord,
         clearLPRLogs,
         markNotificationRead,
         getVisitorByCode, 

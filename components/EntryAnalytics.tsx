@@ -36,13 +36,18 @@ export const EntryAnalytics = () => {
   }, [lprLogs, dateRange]);
 
   const counts = useMemo(() => {
+    const approved = filteredData.filter(l => l.status === 'Approved').length;
+    const rejected = filteredData.filter(l => l.status === 'Rejected').length;
+    const blacklisted = filteredData.filter(l => l.status === 'Blacklisted').length;
+    const pending = filteredData.filter(l => l.status === 'Pending').length;
+    const unknown = filteredData.filter(l => l.status === 'Unknown').length;
+    const blocked = blacklisted + rejected;
     return {
       total: filteredData.length,
-      approved: filteredData.filter(l => l.status === 'Approved').length,
-      rejected: filteredData.filter(l => l.status === 'Rejected').length,
-      blacklisted: filteredData.filter(l => l.status === 'Blacklisted').length,
-      pending: filteredData.filter(l => l.status === 'Pending').length,
-      unknown: filteredData.filter(l => l.status === 'Unknown').length,
+      approved,
+      blocked,
+      pending,
+      unknown
     };
   }, [filteredData]);
 
@@ -100,20 +105,20 @@ export const EntryAnalytics = () => {
                 {/* Breakdown */}
                 <div className="flex-1 w-full grid grid-cols-2 gap-3">
                    <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 p-3 rounded-2xl flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                         <CheckCircle2 size={14} className="text-emerald-500" />
-                         <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Passed</span>
-                      </div>
-                      <span className="text-lg font-black text-emerald-800 dark:text-emerald-100">{counts.approved}</span>
-                   </div>
+                     <div className="flex items-center gap-2">
+                        <CheckCircle2 size={14} className="text-emerald-500" />
+                        <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Passed</span>
+                     </div>
+                     <span className="text-lg font-black text-emerald-800 dark:text-emerald-100">{counts.approved}</span>
+                  </div>
 
                    <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 p-3 rounded-2xl flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                         <XCircle size={14} className="text-red-500" />
-                         <span className="text-[9px] font-bold text-red-700 dark:text-red-300 uppercase tracking-wider">Blocked</span>
-                      </div>
-                      <span className="text-lg font-black text-red-800 dark:text-red-100">{counts.rejected}</span>
-                   </div>
+                     <div className="flex items-center gap-2">
+                        <XCircle size={14} className="text-red-500" />
+                        <span className="text-[9px] font-bold text-red-700 dark:text-red-300 uppercase tracking-wider">Blocked</span>
+                     </div>
+                     <span className="text-lg font-black text-red-800 dark:text-red-100">{counts.blocked}</span>
+                  </div>
 
                    <div className="bg-orange-50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 p-3 rounded-2xl flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -134,11 +139,11 @@ export const EntryAnalytics = () => {
              </div>
 
              {/* Blacklist Warning - Only show if > 0 */}
-             {counts.blacklisted > 0 && (
+             {counts.blocked > 0 && (
                 <div className="mt-4 p-3 bg-red-900/10 border border-red-500/30 rounded-xl flex items-center gap-3 animate-pulse">
                    <ShieldAlert size={16} className="text-red-600 dark:text-red-400" />
                    <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase tracking-widest">
-                      Critical: {counts.blacklisted} Blacklisted Entry Attempt(s) Detected
+                      Critical: {counts.blocked} Blocked Entry Attempt(s) Detected
                    </p>
                 </div>
              )}
