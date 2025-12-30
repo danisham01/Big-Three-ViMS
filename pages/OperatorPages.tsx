@@ -616,29 +616,6 @@ export const OperatorDashboard = () => {
         })}
       </div>
 
-      <div className="mb-8 sticky top-4 z-30">
-        <GlassCard className="!p-2 !bg-white/90 dark:!bg-[#1E1E2E]/80 backdrop-blur-2xl border-slate-200 dark:border-white/10 shadow-2xl">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search by name, code, plate, or host..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl py-3.5 pl-11 pr-11 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-400 dark:placeholder:text-white/20"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white transition-colors"
-              >
-                <X size={18} />
-              </button>
-            )}
-          </div>
-        </GlassCard>
-      </div>
-
       <section className="mb-12">
         <div className="flex items-center gap-2 mb-5">
             <div className="w-1.5 h-4 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
@@ -757,6 +734,28 @@ export const OperatorDashboard = () => {
             </div>
             {!initialLoading && <span className="text-[10px] text-slate-400 dark:text-white/20 font-bold uppercase tracking-wider">{filteredHistory.length} Total Records</span>}
         </div>
+              <div className="mb-8 sticky top-4 z-30">
+        <GlassCard className="!p-2 !bg-white/90 dark:!bg-[#1E1E2E]/80 backdrop-blur-2xl border-slate-200 dark:border-white/10 shadow-2xl">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" size={18} />
+            <input 
+              type="text" 
+              placeholder="Search by name, code, plate, or host..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl py-3.5 pl-11 pr-11 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-400 dark:placeholder:text-white/20"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
+        </GlassCard>
+      </div>
 
         <div className="space-y-4 mb-8">
             <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">

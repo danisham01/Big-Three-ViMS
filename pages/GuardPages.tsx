@@ -45,6 +45,7 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
     const [showCamera, setShowCamera] = useState(false);
+    const autoSubmitRef = useRef(false);
 
     const handleScan = () => {
         if (!input.trim()) return;
@@ -135,7 +136,9 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
             const result = await codeReaderRef.current.decodeOnceFromVideoDevice(undefined, videoRef.current || undefined);
             const value = result.getText();
             if (value) {
-                setInput(value);
+                const cleaned = value.trim();
+                setInput(cleaned);
+                autoSubmitRef.current = true;
                 setShowCamera(false);
                 // stop preview before simulating to avoid lingering camera
                 if (stream) stream.getTracks().forEach(t => t.stop());
@@ -144,7 +147,6 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
                     videoRef.current.srcObject = null;
                 }
                 setIsLoading(false);
-                setTimeout(() => handleScan(), 0);
                 return;
             }
             setMessage({ type: 'error', text: 'No QR detected. Try again.' });
@@ -166,6 +168,14 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (!input.trim() || isLoading) return;
+        if (autoSubmitRef.current) {
+            autoSubmitRef.current = false;
+            handleScan();
+        }
+    }, [input, isLoading]);
 
     // Determine border color based on status
     const getBorderClass = () => {
@@ -220,7 +230,20 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
                         placeholder={allowLPR ? "Scan QR Code" : "Scan QR Code"}
                         value={input}
                         disabled={isLoading}
-                        onChange={(e) => setInput(e.target.value)}
+                        onChange={(e) => {
+                            const nextValue = e.target.value;
+                            if (/[\r\n]/.test(nextValue)) {
+                                autoSubmitRef.current = true;
+                            }
+                            setInput(nextValue.replace(/[\r\n]/g, ''));
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                autoSubmitRef.current = false;
+                                handleScan();
+                            }
+                        }}
                         className={`text-center font-mono tracking-widest !mb-0 h-14 transition-all duration-300 ${message?.type === 'error' || message?.type === 'blacklist' ? 'ring-2 ring-red-500/50' : ''}`}
                     />
                     {isLoading && (

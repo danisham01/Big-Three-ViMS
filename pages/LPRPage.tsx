@@ -556,13 +556,19 @@ export const LPRDetectionPage = () => {
               </div>
 
               <div className="relative">
-                <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/20" />
-                <input 
-                  type="text" 
+                <Search
+                  size={24} // was 20
+                  className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/20"
+                />
+                <input
+                  type="text"
                   placeholder="Search plates or requestors..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/10 rounded-2xl py-4.5 pl-14 pr-6 text-sm text-slate-900 dark:text-white focus:outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-white/20 shadow-2xl"
+                  className="w-full bg-white dark:bg-[#1E1E2E] border border-slate-200 dark:border-white/10
+                            rounded-2xl py-4 pl-16 pr-7 text-base font-medium
+                            text-slate-900 dark:text-white focus:outline-none transition-all
+                            placeholder:text-slate-400 dark:placeholder:text-white/20 shadow-2xl"
                 />
               </div>
 
