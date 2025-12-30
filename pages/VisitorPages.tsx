@@ -999,7 +999,7 @@ export const VisitorStatusCheck = () => {
                 <div className="w-16 h-16 bg-blue-100 dark:bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-500 mx-auto mb-4 border border-blue-200 dark:border-blue-500/20">
                     <Search size={32} />
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Track Application</h1>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Check Appointment Status</h1>
                 <p className="text-slate-500 dark:text-white/50 text-sm">Enter your 5-digit unique access code to check your approval status.</p>
             </div>
 
