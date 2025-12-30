@@ -288,9 +288,15 @@ export const VipDetailModal = ({ vip, onClose, onUpdate, onDeactivate, navigate 
 
 export const VipList = () => {
   const navigate = useNavigate();
-  const { vipRecords, updateVip, deactivateVip } = useStore();
+  const { vipRecords, updateVip, deactivateVip, currentUser } = useStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedVip, setSelectedVip] = useState<VipRecord | null>(null);
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== UserRole.ADMIN) {
+      navigate('/staff/dashboard');
+    }
+  }, [currentUser, navigate]);
 
   const filteredVips = useMemo(() => {
     return vipRecords.filter(v => {
@@ -417,6 +423,12 @@ export const VipForm = () => {
   });
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== UserRole.ADMIN) {
+      navigate('/staff/dashboard');
+    }
+  }, [currentUser, navigate]);
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
