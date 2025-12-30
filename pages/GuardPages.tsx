@@ -1,6 +1,8 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BrowserMultiFormatReader } from '@zxing/browser';
+
 import { useStore } from '../store';
 import { GlassCard, Button, Input, Spinner, ConfirmModal, VisitorCardSkeleton } from '../components/GlassComponents';
 import { EntryAnalytics } from '../components/EntryAnalytics';
@@ -40,6 +42,9 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState<{type: 'success' | 'error' | 'info' | 'blacklist', text: string, host?: string} | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+    const [showCamera, setShowCamera] = useState(false);
 
     const handleScan = () => {
         if (!input.trim()) return;
@@ -113,6 +118,55 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
         }, 1200);
     };
 
+    const handleQrScan = async () => {
+        if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+            setMessage({ type: 'error', text: 'Camera not available on this device.' });
+            return;
+        }
+
+        let stream: MediaStream | null = null;
+        try {
+            setIsLoading(true);
+            setShowCamera(true);
+            if (!codeReaderRef.current) {
+                codeReaderRef.current = new BrowserMultiFormatReader();
+            }
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            const result = await codeReaderRef.current.decodeOnceFromVideoDevice(undefined, videoRef.current || undefined);
+            const value = result.getText();
+            if (value) {
+                setInput(value);
+                setShowCamera(false);
+                // stop preview before simulating to avoid lingering camera
+                if (stream) stream.getTracks().forEach(t => t.stop());
+                if (videoRef.current?.srcObject) {
+                    (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+                    videoRef.current.srcObject = null;
+                }
+                setIsLoading(false);
+                setTimeout(() => handleScan(), 0);
+                return;
+            }
+            setMessage({ type: 'error', text: 'No QR detected. Try again.' });
+        } catch (err) {
+            console.error('QR scan failed', err);
+            setMessage({ type: 'error', text: 'QR scan failed.' });
+        } finally {
+            if (codeReaderRef.current) {
+                codeReaderRef.current = null;
+            }
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+            }
+            if (videoRef.current?.srcObject) {
+                (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+                videoRef.current.srcObject = null;
+            }
+            setShowCamera(false);
+            setIsLoading(false);
+        }
+    };
+
     // Determine border color based on status
     const getBorderClass = () => {
         if (!message) return 'border-slate-200 dark:border-white/5';
@@ -126,9 +180,14 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
         <GlassCard className={`h-full flex flex-col group transition-all duration-500 border-2 ${getBorderClass()}`}>
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <div className={`p-3 rounded-2xl ${type === 'FRONT_GATE' ? 'bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400'} group-hover:scale-110 transition-transform duration-500`}>
+                    <button 
+                      onClick={handleQrScan}
+                      type="button"
+                      className={`p-3 rounded-2xl ${type === 'FRONT_GATE' ? 'bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400'} group-hover:scale-110 transition-transform duration-500 border border-transparent hover:border-blue-400/30`}
+                      title="Open camera to scan QR"
+                    >
                         <Scan size={24} />
-                    </div>
+                    </button>
                     <div>
                         <h3 className="font-bold text-slate-900 dark:text-white text-lg">{name}</h3>
                         <p className="text-[10px] text-slate-500 dark:text-white/30 uppercase tracking-widest">Scanning Point</p>
@@ -150,6 +209,12 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
             </div>
             
             <div className="flex-1 flex flex-col justify-center gap-4">
+                {showCamera && (
+                  <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-black">
+                    <video ref={videoRef} className="w-full h-full aspect-video" muted playsInline autoPlay />
+                  </div>
+                )}
+
                 <div className="relative transform transition-transform duration-300 group-focus-within:scale-[1.02]">
                     <Input 
                         placeholder={allowLPR ? "Scan QR Code" : "Scan QR Code"}
@@ -165,14 +230,23 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
                     )}
                 </div>
                 
-                <Button 
-                    onClick={handleScan} 
-                    loading={isLoading}
-                    disabled={!input.trim()}
-                    className="w-full h-14 text-xs font-bold uppercase tracking-[0.2em]"
-                >
-                    {isLoading ? 'Verifying...' : 'Simulate Scan'}
-                </Button>
+                <div className="flex gap-3">
+                    <Button 
+                        onClick={handleScan} 
+                        loading={isLoading}
+                        disabled={!input.trim()}
+                        className="flex-1 h-14 text-xs font-bold uppercase tracking-[0.2em]"
+                    >
+                        {isLoading ? 'Verifying...' : 'Simulate Scan'}
+                    </Button>
+                    <button 
+                        onClick={handleQrScan}
+                        disabled={isLoading}
+                        className="h-14 px-4 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-[10px] font-black uppercase tracking-widest hover:border-blue-500/40 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                    >
+                        Scan QR
+                    </button>
+                </div>
 
                 <div className="h-16 flex items-center justify-center">
                     {message && (
@@ -193,6 +267,7 @@ const AccessPoint = ({ name, type, allowedQRs, allowLPR }: {
                         </div>
                     )}
                 </div>
+                <video ref={videoRef} className="hidden" playsInline muted />
             </div>
         </GlassCard>
     );
