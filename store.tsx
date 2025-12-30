@@ -73,6 +73,79 @@ const normalizePlate = (plate?: string) => plate?.toUpperCase().replace(/[^A-Z0-
 const normalizePhone = (phone?: string) => phone?.replace(/[^0-9+]/g, '') || '';
 const toFirestore = <T,>(data: T): T => JSON.parse(JSON.stringify(data));
 
+const SERVICE_PURPOSES = [
+  'E-Hailing (Driver)',
+  'Food Services',
+  'Courier Services',
+  'Garbage Truck Services',
+  'Safeguard'
+];
+
+const STAFF_PURPOSES = ['External TNB Staff', 'External Staff'];
+
+const PURPOSE_DURATION_LIMITS: Record<string, number> = {
+  'E-Hailing (Driver)': 45,
+  'Food Services': 45,
+  'Courier Services': 45,
+  'Garbage Truck Services': 120,
+  'Safeguard': 120
+};
+
+const getPurposeDurationMinutes = (purpose: string) => PURPOSE_DURATION_LIMITS[purpose] ?? null;
+const formatDurationLabel = (minutes: number) => (minutes % 60 === 0 ? `${minutes / 60} hours` : `${minutes} minutes`);
+
+const enforcePurposeRules = (
+  visitor: Omit<Visitor, 'id' | 'qrType' | 'status' | 'createdAt'> & { status?: VisitorStatus }
+) => {
+  const errors: string[] = [];
+  const purpose = visitor.purpose;
+  let next = { ...visitor };
+
+  if (!purpose) errors.push('Purpose is required.');
+
+  if (SERVICE_PURPOSES.includes(purpose) && !visitor.dropOffArea?.trim()) {
+    errors.push('Designated drop-off / pickup area is required for this purpose.');
+  }
+
+  if (purpose === 'Public' && !visitor.specifiedLocation) {
+    errors.push('Specified location is required for Public visitors.');
+  }
+
+  if (STAFF_PURPOSES.includes(purpose)) {
+    if (!visitor.staffNumber?.trim()) errors.push('Staff number is required for external staff visitors.');
+    if (!visitor.location?.trim()) errors.push('Location is required for external staff visitors.');
+    if (!visitor.icPhoto) errors.push('ID image is required for external staff visitors.');
+  }
+
+  if (!visitor.visitDate) errors.push('Start date/time is required.');
+  if (!visitor.endDate) errors.push('End date/time is required.');
+
+  const startMs = visitor.visitDate ? new Date(visitor.visitDate).getTime() : NaN;
+  const endMs = visitor.endDate ? new Date(visitor.endDate).getTime() : NaN;
+
+  if (isNaN(startMs) || isNaN(endMs)) {
+    errors.push('Invalid visit time provided.');
+  } else {
+    if (endMs <= startMs) {
+      errors.push('End time must be after start time.');
+    }
+
+    const limitMinutes = getPurposeDurationMinutes(purpose);
+    if (limitMinutes) {
+      const maxEnd = startMs + limitMinutes * 60 * 1000;
+      if (endMs > maxEnd) {
+        next = { ...next, endDate: new Date(maxEnd).toISOString() };
+      }
+    }
+  }
+
+  if (errors.length) {
+    throw new Error(errors[0]);
+  }
+
+  return next;
+};
+
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const now = new Date();
   
@@ -770,20 +843,21 @@ Big Three
   };
 
   const addVisitor = (data: Omit<Visitor, 'id' | 'qrType' | 'status' | 'createdAt'> & { status?: VisitorStatus }) => {
-    const blacklisted = checkBlacklist(data.icNumber, data.licensePlate, data.contact);
+    const validatedData = enforcePurposeRules(data);
+    const blacklisted = checkBlacklist(validatedData.icNumber, validatedData.licensePlate, validatedData.contact);
     if (blacklisted) {
       throw new Error(`Access Denied \u2014 Blacklisted. Reason: ${blacklisted.reason}`);
     }
 
-    const isAdhoc = data.type === VisitorType.ADHOC;
-    const status = data.status || (isAdhoc ? VisitorStatus.APPROVED : VisitorStatus.PENDING);
+    const isAdhoc = validatedData.type === VisitorType.ADHOC;
+    const status = validatedData.status || (isAdhoc ? VisitorStatus.APPROVED : VisitorStatus.PENDING);
     
     const newVisitor: Visitor = {
-      ...data,
+      ...validatedData,
       id: generateUniqueCode(visitors),
       status: status,
-      qrType: determineQRType(data.transportMode, data.purpose),
-      registeredBy: data.registeredBy || 'SELF',
+      qrType: determineQRType(validatedData.transportMode, validatedData.purpose),
+      registeredBy: validatedData.registeredBy || 'SELF',
       createdAt: new Date().toISOString(),
     };
     setVisitors(prev => [newVisitor, ...prev]);

@@ -6,7 +6,7 @@ import { GlassCard, Button, Input, Select, StatusBadge, LoadingOverlay, Toast } 
 import { QRCodeDisplay } from '../components/QRCodeDisplay';
 import { Logo } from '../components/Logo';
 import { HelpModal } from '../components/HelpModal';
-import { VisitorType, TransportMode, VisitorStatus, QRType, UserRole } from '../types';
+import { VisitorType, TransportMode, VisitorStatus, QRType, UserRole, BlacklistRecord } from '../types';
 import { User, Car, Check, AlertCircle, RefreshCw, Share2, Download, Copy, Building2, ChevronRight, ArrowLeft, HelpCircle, Phone, FileText, Briefcase, Calendar, Clock, X, Search, ShieldCheck, Mail, Camera, Image as ImageIcon, CreditCard, Bike, MapPin, Hash, FileUp, Upload, Ban, Scan, RotateCcw } from 'lucide-react';
 import { StaffDashboard } from './StaffPages';
 import { OperatorDashboard } from './OperatorPages';
@@ -30,6 +30,49 @@ const SPECIFIED_LOCATIONS = [
   { value: 'Fasiliti Sukan', label: 'Fasiliti Sukan' },
   { value: 'Ruang Komuniti', label: 'Ruang Komuniti' },
 ];
+
+const SERVICE_PURPOSES = [
+  'E-Hailing (Driver)',
+  'Food Services',
+  'Courier Services',
+  'Garbage Truck Services',
+  'Safeguard'
+];
+
+const STAFF_PURPOSES = ['External TNB Staff', 'External Staff'];
+
+const PURPOSE_DURATION_LIMITS: Record<string, number> = {
+  'E-Hailing (Driver)': 45,
+  'Food Services': 45,
+  'Courier Services': 45,
+  'Garbage Truck Services': 120,
+  'Safeguard': 120
+};
+
+const getPurposeDurationMinutes = (purpose: string) => PURPOSE_DURATION_LIMITS[purpose] ?? null;
+
+const formatDurationLabel = (minutes: number) => {
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  }
+  return `${minutes} minutes`;
+};
+
+const formatTimeLabel = (value?: string) => {
+  if (!value) return '';
+  return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const toLocalInputValue = (date: Date) => {
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const h = pad(date.getHours());
+  const min = pad(date.getMinutes());
+  return `${y}-${m}-${d}T${h}:${min}`;
+};
 
 // Custom Camera Modal Component
 const CameraModal = ({ onCapture, onClose }: { onCapture: (dataUrl: string) => void, onClose: () => void }) => {
@@ -242,11 +285,27 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
   const { addVisitor, checkBlacklist } = useStore();
   const [loading, setLoading] = useState(false);
   const [blacklistError, setBlacklistError] = useState<string | null>(null);
+  const [blacklistMatch, setBlacklistMatch] = useState<{ record: BlacklistRecord; matchedBy: ('icNumber' | 'licensePlate' | 'phone')[] } | null>(null);
+  const [showBlacklistModal, setShowBlacklistModal] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   
   // Specific refs for inputs
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
+  const icInputId = 'visitor-ic-input';
+  const phoneInputId = 'visitor-phone-input';
+  const plateInputId = 'visitor-plate-input';
+
+  const focusField = (id: string) => {
+    const el = document.getElementById(id) as HTMLInputElement | null;
+    if (el) {
+      el.focus({ preventScroll: true });
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
+  const normalizePlateLocal = (plate?: string) => plate?.toUpperCase().replace(/[^A-Z0-9]/g, '') || '';
+  const normalizePhoneLocal = (phone?: string) => phone?.replace(/[^0-9+]/g, '') || '';
   
   // Camera State
   const [showCamera, setShowCamera] = useState(false);
@@ -269,17 +328,49 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
     licensePlate: ''
   });
 
+  // Live blacklist detection
+  useEffect(() => {
+    const ic = formData.icNumber.trim();
+    const plate = formData.licensePlate.trim();
+    const phone = formData.phone.trim();
+    const match = checkBlacklist(ic, plate, phone);
+    if (match) {
+      const matchedBy: ('icNumber' | 'licensePlate' | 'phone')[] = [];
+      if (match.icNumber && match.icNumber === ic) matchedBy.push('icNumber');
+      if (match.licensePlate && normalizePlateLocal(match.licensePlate) === normalizePlateLocal(plate)) matchedBy.push('licensePlate');
+      if (match.phone && normalizePhoneLocal(match.phone) === normalizePhoneLocal(phone)) matchedBy.push('phone');
+      setBlacklistMatch({ record: match, matchedBy });
+      setBlacklistError(`Access Denied - Blacklisted${match.reason ? `. Reason: ${match.reason}` : ''}`);
+      setShowBlacklistModal(true);
+
+      if (matchedBy.includes('icNumber')) focusField(icInputId);
+      else if (matchedBy.includes('phone')) focusField(phoneInputId);
+      else if (matchedBy.includes('licensePlate')) focusField(plateInputId);
+    } else {
+      setBlacklistMatch(null);
+      setBlacklistError(null);
+      setShowBlacklistModal(false);
+    }
+  }, [formData.icNumber, formData.licensePlate, formData.phone, checkBlacklist]);
+
   // Constraints for Today
   const todayRange = useMemo(() => {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
     return {
-      startStr: start.toISOString().slice(0, 16),
-      endStr: end.toISOString().slice(0, 16),
+      startStr: toLocalInputValue(start),
+      endStr: toLocalInputValue(end),
       displayDate: now.toLocaleDateString(undefined, { dateStyle: 'full' })
     };
   }, []);
+
+  const purposeDurationLimit = useMemo(() => getPurposeDurationMinutes(formData.purpose), [formData.purpose]);
+  const purposeDurationLabel = useMemo(
+    () => (purposeDurationLimit ? formatDurationLabel(purposeDurationLimit) : ''),
+    [purposeDurationLimit]
+  );
+  const isBlacklisted = !!blacklistMatch;
 
   // Initialize dates
   useEffect(() => {
@@ -293,12 +384,56 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
     } else {
       // For Pre-registered: Default to current hour +2 hours
       const now = new Date();
-      const startStr = now.toISOString().slice(0, 16);
+      const startStr = toLocalInputValue(now);
       const end = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-      const endStr = end.toISOString().slice(0, 16);
+      const endStr = toLocalInputValue(end);
       setFormData(prev => ({ ...prev, visitDate: startStr, endDate: endStr }));
     }
   }, [type, todayRange]);
+
+  // Enforce purpose duration window (Ad-hoc always auto-filled; Pre-reg capped)
+  useEffect(() => {
+    if (!formData.visitDate) return;
+
+    if (type === VisitorType.ADHOC) {
+      const limitMinutes = purposeDurationLimit;
+      if (limitMinutes) {
+        const start = new Date();
+        const end = new Date(start.getTime() + limitMinutes * 60 * 1000);
+        const startStr = toLocalInputValue(start);
+        const endStr = toLocalInputValue(end);
+        setFormData(prev => {
+          if (prev.visitDate === startStr && prev.endDate === endStr) return prev;
+          return { ...prev, visitDate: startStr, endDate: endStr };
+        });
+      } else {
+        setFormData(prev => {
+          if (prev.visitDate === todayRange.startStr && prev.endDate === todayRange.endStr) return prev;
+          return { ...prev, visitDate: todayRange.startStr, endDate: todayRange.endStr };
+        });
+      }
+      return;
+    }
+
+    const limitMinutes = purposeDurationLimit;
+    if (formData.endDate) {
+      const start = new Date(formData.visitDate).getTime();
+      const end = new Date(formData.endDate).getTime();
+      if (!isNaN(start) && !isNaN(end)) {
+        const minEnd = start + 60 * 1000;
+        let cappedEnd = end < minEnd ? minEnd : end;
+
+        if (limitMinutes) {
+          const maxEnd = start + limitMinutes * 60 * 1000;
+          if (cappedEnd > maxEnd) cappedEnd = maxEnd;
+        }
+
+        if (cappedEnd !== end) {
+          setFormData(prev => ({ ...prev, endDate: toLocalInputValue(new Date(cappedEnd)) }));
+        }
+      }
+    }
+  }, [type, formData.visitDate, formData.endDate, purposeDurationLimit, todayRange.startStr, todayRange.endStr]);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -349,15 +484,24 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
 
     // Conditional Validations based on Purpose
     const p = formData.purpose;
-    if (['E-Hailing (Driver)', 'Food Services', 'Courier Services', 'Garbage Truck Services', 'Safeguard'].includes(p)) {
+    if (SERVICE_PURPOSES.includes(p)) {
       if (!formData.dropOffArea.trim()) newErrors.dropOffArea = 'Designated area is required';
     }
     if (p === 'Public') {
       if (!formData.specifiedLocation) newErrors.specifiedLocation = 'Please select a location';
     }
-    if (['External TNB Staff', 'External Staff'].includes(p)) {
+    if (STAFF_PURPOSES.includes(p)) {
       if (!formData.staffNumber.trim()) newErrors.staffNumber = 'Staff number is required';
       if (!formData.location.trim()) newErrors.location = 'Location is required';
+    }
+
+    const limitMinutes = purposeDurationLimit;
+    if (limitMinutes && formData.visitDate && formData.endDate) {
+      const start = new Date(formData.visitDate).getTime();
+      const end = new Date(formData.endDate).getTime();
+      if (!isNaN(start) && !isNaN(end) && end - start > limitMinutes * 60 * 1000) {
+        newErrors.endDate = `Visit must be completed within ${formatDurationLabel(limitMinutes)} for this purpose.`;
+      }
     }
 
     if (formData.transportMode === TransportMode.CAR) {
@@ -381,6 +525,13 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (blacklistMatch) {
+      setShowBlacklistModal(true);
+      if (blacklistMatch.matchedBy.includes('icNumber')) focusField(icInputId);
+      else if (blacklistMatch.matchedBy.includes('phone')) focusField(phoneInputId);
+      else if (blacklistMatch.matchedBy.includes('licensePlate')) focusField(plateInputId);
+      return;
+    }
     setBlacklistError(null);
     if (!validate()) return;
     
@@ -403,6 +554,46 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
 
   return (
     <div className="max-w-md mx-auto pt-6 px-4 pb-20">
+      {isBlacklisted && showBlacklistModal && (
+        <div className="fixed inset-0 z-[160] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center px-4 py-6 animate-in fade-in">
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full max-w-md bg-[#121222] text-white rounded-3xl border border-red-500/30 shadow-2xl overflow-hidden animate-in zoom-in"
+          >
+            <div className="p-5 flex items-center justify-between border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <Ban className="text-red-400" size={24} />
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-red-200/70 font-black">Alert</p>
+                  <h3 className="text-lg font-bold">Access Denied</h3>
+                </div>
+              </div>
+              <button
+                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/15 text-white flex items-center justify-center"
+                onClick={() => setShowBlacklistModal(false)}
+                aria-label="Close blacklist alert"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              <p className="text-sm text-red-100 font-semibold">Your information is blacklisted. You cannot proceed with registration.</p>
+              {blacklistMatch?.record.reason && (
+                <p className="text-xs text-red-200/80">Reason: {blacklistMatch.record.reason}</p>
+              )}
+              <p className="text-[11px] uppercase tracking-[0.2em] text-white/40 font-black">Ref: BLACKLIST_ENTRY_ATTEMPT</p>
+            </div>
+            <div className="p-5 bg-white/5 flex flex-col sm:flex-row gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setShowBlacklistModal(false)} type="button">Close</Button>
+              <Button variant="primary" className="flex-1" type="button">
+                Contact Security
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
       {loading && <LoadingOverlay message="Creating your digital pass..." />}
       {showCamera && (
@@ -430,16 +621,6 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
           <p className="text-slate-500 dark:text-white/50 text-sm">Complete your details for building access.</p>
       </div>
 
-      {blacklistError &&
-        (blacklistError.toLowerCase().includes('ban') || blacklistError.toLowerCase().includes('blacklist')) && (
-          <div className="mb-6 p-6 bg-red-100 dark:bg-red-600/10 border-2 border-red-200 dark:border-red-500/30 rounded-3xl animate-in zoom-in text-center">
-            <Ban size={48} className="text-red-500 mx-auto mb-3" />
-            {/* <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2"></h3> */}
-            <p className="text-red-600 dark:text-red-200/70 text-sm font-medium leading-relaxed">{blacklistError}</p>
-            <p className="text-[10px] text-slate-400 dark:text-white/30 mt-4 uppercase tracking-[0.2em] font-black">Ref: BLACKLIST_ENTRY_ATTEMPT</p>
-          </div>
-        )}
-      
       <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
         <GlassCard title="Identity Verification" className="!p-5 !pb-2">
             <Input 
@@ -455,10 +636,11 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                 label="IC Number / ID" 
                 required 
                 value={formData.icNumber}
-                error={errors.icNumber}
+                error={errors.icNumber || (blacklistMatch?.matchedBy.includes('icNumber') ? 'This ID is blacklisted.' : undefined)}
                 onChange={e => setFormData({...formData, icNumber: e.target.value})}
                 placeholder="e.g. 900101-01-1234"
                 icon={<CreditCard size={18} />}
+                id={icInputId}
             />
 
             <div className="mb-4">
@@ -515,10 +697,11 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                 required 
                 type="tel"
                 value={formData.phone}
-                error={errors.phone}
+                error={errors.phone || (blacklistMatch?.matchedBy.includes('phone') ? 'This phone number is blacklisted.' : undefined)}
                 onChange={e => setFormData({...formData, phone: e.target.value})}
                 placeholder="+6012-3456789"
                 icon={<Phone size={18} />}
+                id={phoneInputId}
             />
             <Input 
                 label="Email Address" 
@@ -542,7 +725,7 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
             />
 
             {/* Conditional Fields based on Purpose */}
-            {['E-Hailing (Driver)', 'Food Services', 'Courier Services', 'Garbage Truck Services', 'Safeguard'].includes(formData.purpose) && (
+            {SERVICE_PURPOSES.includes(formData.purpose) && (
               <div className="animate-in slide-in-from-top-2">
                 <Input 
                   label="Designated Drop-off / Pickup Area"
@@ -569,7 +752,7 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
               </div>
             )}
 
-            {['External TNB Staff', 'External Staff'].includes(formData.purpose) && (
+            {STAFF_PURPOSES.includes(formData.purpose) && (
               <div className="animate-in slide-in-from-top-2 space-y-4">
                 <Input 
                   label="Staff Number"
@@ -599,22 +782,40 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                   <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200 dark:border-white/5 animate-in slide-in-from-top-2">
                     <div className="flex items-center gap-3 mb-1">
                       <Calendar size={18} className="text-blue-500" />
-                      <p className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-white/70">Visit Duration</p>
+                      <p className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-white/70">Visit Day</p>
                     </div>
                     <p className="text-sm font-bold text-slate-900 dark:text-white ml-8">
-                      {todayRange.displayDate}
+                      {formData.visitDate ? new Date(formData.visitDate).toLocaleDateString(undefined, { dateStyle: 'full' }) : todayRange.displayDate}
                     </p>
                     <div className="flex items-center gap-3 mt-3">
                       <Clock size={18} className="text-emerald-500" />
-                      <p className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-white/70">Access Window</p>
+                      <p className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-white/70">Access Duration</p>
                     </div>
                     <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 ml-8 uppercase">
-                      All Day Access (00:00 - 23:59)
+                      {purposeDurationLimit 
+                        ? `${formatTimeLabel(formData.visitDate)} - ${formatTimeLabel(formData.endDate)}`
+                        : 'All Day Access (00:00 - 23:59)'}
                     </p>
+                    {purposeDurationLimit && (
+                      <p className="text-[10px] font-bold text-amber-600 dark:text-amber-300 ml-8 mt-1 uppercase">
+                        This visit must be completed within {purposeDurationLabel}.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   /* Pre-registered: Allow date/time selection */
                   <>
+                    {purposeDurationLimit && (
+                      <div className="p-3 rounded-xl border bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                        <Clock size={18} className="text-amber-600 dark:text-amber-300 mt-0.5" />
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-200/90">Purpose Duration Rule</p>
+                          <p className="text-xs text-amber-700 dark:text-amber-100 font-semibold leading-relaxed">
+                            This visit must be completed within {purposeDurationLabel}. End time is capped to the allowed window.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     <Input 
                         label="Start Visit Date/Time" 
                         type="datetime-local"
@@ -709,22 +910,39 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                     label="License Plate" 
                     required 
                     value={formData.licensePlate}
-                    error={errors.licensePlate}
+                    error={errors.licensePlate || (blacklistMatch?.matchedBy.includes('licensePlate') ? 'This plate is blacklisted.' : undefined)}
                     onChange={e => setFormData({...formData, licensePlate: e.target.value.toUpperCase()})}
-                    placeholder="ABC-1234"
+                    placeholder="ABC1234"
                     icon={<FileText size={18} />}
                     className="uppercase font-mono"
+                    id={plateInputId}
                 />
             )}
         </GlassCard>
+
+        {blacklistError &&
+          (blacklistError.toLowerCase().includes('ban') || blacklistError.toLowerCase().includes('blacklist')) && (
+            <div className="sticky bottom-4 z-20">
+              <div className="mb-4 p-5 bg-red-100 dark:bg-red-600/10 border-2 border-red-200 dark:border-red-500/30 rounded-3xl animate-in zoom-in text-center shadow-lg">
+                <Ban size={40} className="text-red-500 mx-auto mb-2" />
+                <p className="text-red-700 dark:text-red-200/80 text-sm font-semibold leading-relaxed">{blacklistError}</p>
+                <p className="text-[10px] text-slate-500 dark:text-white/40 mt-3 uppercase tracking-[0.2em] font-black">Ref: BLACKLIST_ENTRY_ATTEMPT</p>
+              </div>
+            </div>
+          )}
 
         <div className="mt-2 flex items-center justify-between gap-4">
             <button type="button" onClick={() => navigate('/visitor')} className="text-slate-500 dark:text-white/50 text-sm font-bold px-4 py-2 hover:text-slate-900 dark:hover:text-white transition-colors">
                 Cancel
             </button>
-            <Button type="submit" loading={loading} className="flex-1 shadow-blue-500/20 shadow-xl">
+            <div className="flex-1 space-y-1">
+              <Button type="submit" loading={loading} disabled={isBlacklisted} className="w-full shadow-blue-500/20 shadow-xl">
                 Register <ChevronRight size={18} />
-            </Button>
+              </Button>
+              {isBlacklisted && (
+                <p className="text-[11px] text-red-500 dark:text-red-300 font-semibold text-center">Blocked: Blacklisted</p>
+              )}
+            </div>
         </div>
       </form>
     </div>
