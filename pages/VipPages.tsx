@@ -355,42 +355,63 @@ export const VipList = () => {
               <p className="text-xs font-black text-slate-400 dark:text-white/20 uppercase tracking-[0.2em]">No VIP Records Found</p>
            </div>
         ) : (
-           filteredVips.map(vip => (
-             <div 
-               key={vip.id}
-               onClick={() => setSelectedVip(vip)}
-               className="group relative overflow-hidden rounded-3xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#1E1E2E] p-5 transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer shadow-lg hover:shadow-xl"
-             >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black ${vip.vipType === VipType.VVIP ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500' : 'bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-500'}`}>
-                       {vip.name[0]}
-                    </div>
-                    <div>
-                       <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">{vip.name}</h3>
-                       <p className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wide mt-0.5">
-                         {vip.designation === 'Other (Specify)' ? vip.customDesignation : vip.designation}
-                       </p>
-                    </div>
-                  </div>
-                  <VipBadge type={vip.vipType} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                   <div className="bg-slate-50 dark:bg-white/5 p-2 rounded-xl border border-slate-100 dark:border-white/5">
-                      <p className="text-[8px] text-slate-400 dark:text-white/30 font-bold uppercase mb-0.5">License Plate</p>
-                      <p className="text-[10px] font-mono font-bold text-slate-700 dark:text-white/80">{vip.licensePlate}</p>
-                   </div>
-                   <div className="bg-slate-50 dark:bg-white/5 p-2 rounded-xl border border-slate-100 dark:border-white/5">
-                      <p className="text-[8px] text-slate-400 dark:text-white/30 font-bold uppercase mb-0.5">Status</p>
-                      <div className="flex items-center gap-1.5">
-                         <div className={`w-1.5 h-1.5 rounded-full ${vip.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                         <p className={`text-[10px] font-bold ${vip.status === 'ACTIVE' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{vip.status}</p>
-                      </div>
-                   </div>
-                </div>
-             </div>
-           ))
+           <div className="overflow-x-auto rounded-3xl border border-slate-200 dark:border-white/5 bg-white dark:bg-[#0f111c] shadow-xl">
+             <table className="min-w-full text-sm">
+               <thead className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-white/40 bg-white/80 dark:bg-white/5">
+                 <tr>
+                   <th className="text-left font-black px-5 py-3">VIP</th>
+                   <th className="text-left font-black px-5 py-3">Plate</th>
+                   <th className="text-left font-black px-5 py-3">Designation</th>
+                   <th className="text-left font-black px-5 py-3">Status</th>
+                   <th className="text-left font-black px-5 py-3">Validity</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                 {filteredVips.map(vip => (
+                   <tr 
+                     key={vip.id}
+                     onClick={() => setSelectedVip(vip)}
+                     className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                   >
+                     <td className="px-5 py-4">
+                       <div className="flex items-center gap-3">
+                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black ${vip.vipType === VipType.VVIP ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-500' : 'bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-500'}`}>
+                           {vip.name[0]}
+                         </div>
+                         <div>
+                           <div className="flex items-center gap-2">
+                             <span className="text-sm font-black text-slate-900 dark:text-white leading-tight">{vip.name}</span>
+                             <VipBadge type={vip.vipType} />
+                           </div>
+                           <p className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wide mt-0.5">
+                             #{vip.id}
+                           </p>
+                         </div>
+                       </div>
+                     </td>
+                     <td className="px-5 py-4">
+                       <span className="font-mono text-[11px] font-bold text-slate-700 dark:text-white/80 bg-slate-100 dark:bg-white/10 px-2 py-1 rounded">{vip.licensePlate}</span>
+                     </td>
+                     <td className="px-5 py-4 text-[12px] text-slate-600 dark:text-white/70">
+                       {vip.designation === 'Other (Specify)' ? vip.customDesignation : vip.designation}
+                     </td>
+                     <td className="px-5 py-4">
+                       <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full inline-flex items-center gap-1 ${vip.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-300'}`}>
+                         <span className={`w-1.5 h-1.5 rounded-full ${vip.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+                         {vip.status}
+                       </span>
+                     </td>
+                     <td className="px-5 py-4 text-[12px] text-slate-500 dark:text-white/60">
+                       <div className="flex flex-col leading-tight gap-0.5">
+                         <span>From: {new Date(vip.validFrom).toLocaleDateString()}</span>
+                         <span>Until: {new Date(vip.validUntil).toLocaleDateString()}</span>
+                       </div>
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+           </div>
         )}
       </div>
     </div>

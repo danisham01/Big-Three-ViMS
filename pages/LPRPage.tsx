@@ -572,6 +572,84 @@ export const LPRDetectionPage = () => {
                 />
               </div>
 
+              {filteredLogs.length > 0 && (
+                <div className="overflow-x-auto rounded-[2rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-[#0f111c] shadow-2xl mb-6">
+                  <table className="min-w-full text-sm">
+                    <thead className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-white/40 bg-white/80 dark:bg-white/5">
+                      <tr>
+                        <th className="text-left font-black px-5 py-3">Plate</th>
+                        <th className="text-left font-black px-5 py-3">Image</th>
+                        <th className="text-left font-black px-5 py-3">Status</th>
+                        <th className="text-left font-black px-5 py-3">Scan</th>
+                        <th className="text-left font-black px-5 py-3">Requestor</th>
+                        <th className="text-left font-black px-5 py-3">Timestamp</th>
+                        <th className="text-left font-black px-5 py-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {filteredLogs.map(log => {
+                        const isApproved = log.status === 'Approved';
+                        const isRed = log.status === 'Rejected' || log.status === 'Blacklisted';
+                        const isAmber = log.status === 'Pending';
+                        const isEntry = log.mode === 'ENTRY';
+                        return (
+                          <tr
+                            key={log.id}
+                            onClick={() => setSelectedLog(log)}
+                            className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                          >
+                            <td className="px-5 py-4">
+                              <div className="flex flex-col">
+                                <span className="text-sm font-black text-slate-900 dark:text-white">{log.plate}</span>
+                                <span className="text-[10px] uppercase text-slate-400 dark:text-white/40">{log.vehicleColor || 'Unknown'}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="w-24 aspect-video rounded-xl overflow-hidden bg-black border border-slate-200 dark:border-white/10 shadow-lg">
+                                <img src={log.thumbnail} alt="scan" className="w-full h-full object-cover" />
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full inline-flex items-center gap-1 ${isApproved ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' : isRed ? 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-300' : isAmber ? 'bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-white/70'}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${isApproved ? 'bg-emerald-500' : isRed ? 'bg-red-500' : isAmber ? 'bg-orange-500' : 'bg-slate-400'}`}></span>
+                                {log.status}
+                              </span>
+                              <p className={`mt-1 text-[10px] font-bold ${isApproved ? 'text-emerald-600 dark:text-emerald-400' : isRed ? 'text-red-500 dark:text-red-400' : 'text-slate-500 dark:text-white/50'}`}>
+                                {log.details || (isApproved ? 'Gate will open' : isRed ? 'Gate will NOT open' : isAmber ? 'Awaiting approval' : 'No record found')}
+                              </p>
+                            </td>
+                            <td className="px-5 py-4">
+                              <span className="text-[11px] font-bold text-slate-700 dark:text-white/70">{isEntry ? 'Entry Scan' : 'Exit Scan'}</span>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-white/70">
+                                {log.isVip ? <Crown size={12} className="text-amber-500" /> : <User size={12} className="text-blue-500/50" />}
+                                <span className="truncate max-w-[120px]">{log.requestorName || 'N/A'}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 text-[12px] text-slate-500 dark:text-white/60">
+                              <div className="flex flex-col leading-tight">
+                                <span className="font-semibold">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span className="text-[10px] text-slate-400 dark:text-white/40">{new Date(log.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setSelectedLog(log); }}
+                                className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-400 flex items-center gap-1"
+                              >
+                                Review <ExternalLink size={12} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {false && (
               <div className="grid grid-cols-1 gap-4">
                 {filteredLogs.length === 0 ? (
                   <div className="py-24 flex flex-col items-center justify-center bg-white/50 dark:bg-[#1E1E2E]/30 rounded-[3rem] border border-dashed border-slate-200 dark:border-white/10 opacity-40">
@@ -652,6 +730,7 @@ export const LPRDetectionPage = () => {
                   })
                 )}
               </div>
+              )}
             </section>
           </div>
         )}
