@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { StaffDashboard } from "./StaffPages";
 import { OperatorDashboard } from "./OperatorPages";
+import { extractIdFields } from "../utils/ocr";
 
 const PURPOSE_OPTIONS = [
   { value: "", label: "Select Purpose" },
@@ -401,6 +402,15 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
     matchedBy: ("icNumber" | "licensePlate" | "phone")[];
   } | null>(null);
   const [showBlacklistModal, setShowBlacklistModal] = useState(false);
+  const [ocrStatus, setOcrStatus] = useState<
+    "idle" | "scanning" | "success" | "partial" | "error"
+  >("idle");
+  const [ocrMessage, setOcrMessage] = useState<string>("");
+  const [toast, setToast] = useState<{ show: boolean; message: string }>({
+    show: false,
+    message: "",
+  });
+  const [icIdPhotoFile, setIcIdPhotoFile] = useState<File | null>(null);
   const [showHelp, setShowHelp] = useState(false);
 
   // Specific refs for inputs
@@ -707,10 +717,69 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, [field]: reader.result as string }));
+        const result = reader.result as string;
+        setFormData((prev) => ({ ...prev, [field]: result }));
+        if (field === "icPhoto") {
+          void runOcrAndFill(result);
+        }
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const dataUrlToFile = async (dataUrl: string, filename: string) => {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    return new File([blob], filename, { type: blob.type || "image/jpeg" });
+  };
+
+  const runOcrAndFill = async (dataUrl: string) => {
+    setFormData((prev) => ({ ...prev, icPhoto: dataUrl }));
+    setOcrStatus("scanning");
+    setOcrMessage("Scanning ID…");
+    try {
+      const file = await dataUrlToFile(dataUrl, "ic-id.jpg");
+      setIcIdPhotoFile(file);
+    } catch (err) {
+      console.warn("Failed to store capture file", err);
+    }
+
+    try {
+      const result = await extractIdFields(dataUrl);
+      const updates: Partial<typeof formData> = {};
+      if (result.name) updates.name = result.name;
+      if (result.icNumber) updates.icNumber = result.icNumber.replace(/\s+/g, "");
+
+      if (updates.name || updates.icNumber) {
+        setFormData((prev) => ({ ...prev, ...updates }));
+        const partial = !(updates.name && updates.icNumber);
+        setOcrStatus(partial ? "partial" : "success");
+        setOcrMessage(
+          partial ? "Please verify details" : "ID captured successfully"
+        );
+        setToast({
+          show: true,
+          message: partial
+            ? "OCR extracted some details. Please verify."
+            : "ID captured successfully.",
+        });
+        setTimeout(
+          () => setToast({ show: false, message: "" }),
+          2200
+        );
+      } else {
+        setOcrStatus("error");
+        setOcrMessage("Unable to read ID. Please enter details manually.");
+      }
+    } catch (err) {
+      console.error(err);
+      setOcrStatus("error");
+      setOcrMessage("OCR failed. Please try again or enter manually.");
+    }
+  };
+
+  const handleSnapshotCapture = async (dataUrl: string) => {
+    void runOcrAndFill(dataUrl);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -725,6 +794,10 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
       return;
     }
     setBlacklistError(null);
+    if (ocrStatus === "scanning") {
+      setOcrMessage("Please wait for ID scan to finish.");
+      return;
+    }
     if (!validate()) return;
 
     setLoading(true);
@@ -746,6 +819,13 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
 
   return (
     <div className="max-w-md mx-auto pt-6 px-4 pb-20">
+      {toast.show && (
+        <Toast
+          message={toast.message}
+          type="success"
+          onClose={() => setToast({ show: false, message: "" })}
+        />
+      )}
       {isBlacklisted && showBlacklistModal && (
         <div className="fixed inset-0 z-[160] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center px-4 py-6 animate-in fade-in">
           <div
@@ -807,7 +887,7 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
       {showCamera && (
         <CameraModal
           onCapture={(img) =>
-            setFormData((prev) => ({ ...prev, icPhoto: img }))
+            handleSnapshotCapture(img)
           }
           onClose={() => setShowCamera(false)}
         />
@@ -927,6 +1007,22 @@ export const VisitorForm = ({ type }: { type: VisitorType }) => {
                 onChange={(e) => handleFileChange(e, "icPhoto")}
               />
             </div>
+            {ocrStatus !== "idle" && (
+              <p
+                className={`mt-2 text-[10px] font-semibold ${
+                  ocrStatus === "success"
+                    ? "text-emerald-500"
+                    : ocrStatus === "partial"
+                    ? "text-amber-500"
+                    : ocrStatus === "scanning"
+                    ? "text-blue-500"
+                    : "text-red-500"
+                }`}
+              >
+                {ocrStatus === "scanning" && "Scanning ID…"}
+                {ocrStatus !== "scanning" && ocrMessage}
+              </p>
+            )}
             {errors.icPhoto && (
               <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium animate-in fade-in slide-in-from-top-1">
                 {errors.icPhoto}

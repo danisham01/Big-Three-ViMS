@@ -7,6 +7,7 @@ import { QRCodeDisplay } from '../components/QRCodeDisplay';
 import { Logo } from '../components/Logo';
 import { VisitorType, TransportMode, VisitorStatus, Visitor, UserRole, Notification, QRType } from '../types';
 import { User as UserIcon, Car, Check, Lock, ChevronRight, Mail, Share2, Download, LogOut, ArrowLeft, Calendar, FileText, Phone, Briefcase, UserCheck, Shield, Clock, AlertCircle, Eye, EyeOff, CheckCircle2, Bell, MapPin, Hash, FileUp, Camera, Image as ImageIcon, Bike, X, CreditCard, Copy, ShieldCheck, RefreshCw } from 'lucide-react';
+import { extractIdFields } from '../utils/ocr';
 
 const PURPOSE_OPTIONS = [
   { value: '', label: 'Select Purpose' },
@@ -255,12 +256,45 @@ export const StaffDashboard = () => {
       return Object.keys(newErrors).length === 0;
     };
 
+    const [ocrStatus, setOcrStatus] = useState<'idle' | 'scanning' | 'success' | 'partial' | 'error'>('idle');
+    const [ocrMessage, setOcrMessage] = useState('');
+
+    const runOcrAndFill = async (dataUrl: string) => {
+      setFormData(prev => ({ ...prev, icPhoto: dataUrl }));
+      setOcrStatus('scanning');
+      setOcrMessage('Scanning ID…');
+      try {
+        const result = await extractIdFields(dataUrl);
+        const updates: Partial<typeof formData> = {};
+        if (result.name) updates.name = result.name;
+        if (result.icNumber) updates.icNumber = result.icNumber.replace(/\s+/g, '');
+
+        if (updates.name || updates.icNumber) {
+          setFormData(prev => ({ ...prev, ...updates }));
+          const partial = !(updates.name && updates.icNumber);
+          setOcrStatus(partial ? 'partial' : 'success');
+          setOcrMessage(partial ? 'Please verify details' : 'ID captured successfully');
+        } else {
+          setOcrStatus('error');
+          setOcrMessage('Unable to read ID. Please enter details manually.');
+        }
+      } catch (err) {
+        console.error(err);
+        setOcrStatus('error');
+        setOcrMessage('OCR failed. Please try again or enter manually.');
+      }
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'icPhoto' | 'supportingDocument') => {
       const file = e.target.files?.[0];
       if (file) {
         const reader = new FileReader();
         reader.onloadend = () => {
-          setFormData(prev => ({ ...prev, [field]: reader.result as string }));
+          const result = reader.result as string;
+          setFormData(prev => ({ ...prev, [field]: result }));
+          if (field === 'icPhoto') {
+            void runOcrAndFill(result);
+          }
         };
         reader.readAsDataURL(file);
       }
@@ -268,6 +302,10 @@ export const StaffDashboard = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (ocrStatus === 'scanning') {
+          setOcrMessage('Please wait for ID scan to finish.');
+          return;
+        }
         if (!validate()) return;
         
         setLoading(true);
@@ -410,6 +448,15 @@ export const StaffDashboard = () => {
                                     onChange={e => handleFileChange(e, 'icPhoto')}
                                 />
                             </div>
+                            {ocrStatus !== 'idle' && (
+                              <p className={`mt-1 ml-1 text-[10px] font-semibold ${
+                                ocrStatus === 'success' ? 'text-emerald-500' :
+                                ocrStatus === 'partial' ? 'text-amber-500' :
+                                ocrStatus === 'scanning' ? 'text-blue-500' : 'text-red-500'
+                              }`}>
+                                {ocrStatus === 'scanning' ? 'Scanning ID…' : ocrMessage}
+                              </p>
+                            )}
                             {errors.icPhoto && <p className="mt-1 ml-1 text-[10px] text-red-400 font-medium">{errors.icPhoto}</p>}
                         </div>
                     </GlassCard>
