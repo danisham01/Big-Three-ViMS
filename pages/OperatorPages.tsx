@@ -635,51 +635,78 @@ export const OperatorDashboard = () => {
                     <p className="text-xs text-slate-400 dark:text-white/30 font-medium tracking-wide">No visitors currently inside the premise.</p>
                 </div>
             ) : (
-                liveVisitors.map((item, idx) => (
-                    <div 
-                      key={idx}
-                      onClick={() => {
-                          if (item.isVip) setSelectedVip(item.record as VipRecord);
-                          else if (item.record) setSelectedVisitor({ visitor: item.record as Visitor, entryAt: item.entryAt, exitAt: item.exitAt });
-                          else setSelectedUnknown(item);
-                      }}
-                      className={`group relative overflow-hidden rounded-3xl border ${item.isOverstaying ? 'border-red-500/50 bg-red-50/50 dark:bg-red-900/10 shadow-red-500/10' : 'border-emerald-100 dark:border-emerald-500/20 bg-white dark:bg-[#1E1E2E]'} p-5 shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer`}
-                    >
-                       <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-4">
-                             <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black ${item.isVip ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-600' : item.isOverstaying ? 'bg-red-100 dark:bg-red-500/10 text-red-600' : 'bg-blue-100 dark:bg-blue-500/10 text-blue-600'}`}>
-                                {item.isVip ? <Crown size={20} /> : <User size={20} />}
-                             </div>
-                             <div>
-                                <h3 className="text-sm font-black text-slate-900 dark:text-white leading-tight">{item.name}</h3>
-                                <div className="flex items-center gap-2 mt-1">
-                                   {item.isVip && <span className="text-[9px] font-black bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-500/30">VIP</span>}
-                                   {item.plate ? (
-                                     <span className="font-mono text-[10px] font-bold bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-slate-600 dark:text-white/80">{item.plate}</span>
-                                   ) : (
-                                     <span className="text-[9px] font-bold text-slate-400 dark:text-white/40 uppercase">Walk-in</span>
-                                   )}
+                <div className="overflow-x-auto rounded-3xl border border-emerald-100 dark:border-emerald-500/20 bg-white dark:bg-[#0f111c] shadow-lg">
+                  <table className="min-w-full text-sm">
+                    <thead className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-white/40 bg-white/60 dark:bg-white/5">
+                      <tr>
+                        <th className="text-left font-black px-5 py-3">Visitor</th>
+                        <th className="text-left font-black px-5 py-3">Status</th>
+                        <th className="text-left font-black px-5 py-3">Duration</th>
+                        <th className="text-left font-black px-5 py-3">Entry</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                      {liveVisitors.map((item, idx) => {
+                        const rowTone = item.isOverstaying ? 'bg-red-50/70 dark:bg-red-900/10' : 'hover:bg-emerald-50 dark:hover:bg-white/5';
+                        return (
+                          <tr
+                            key={idx}
+                            onClick={() => {
+                              if (item.isVip) setSelectedVip(item.record as VipRecord);
+                              else if (item.record) setSelectedVisitor({ visitor: item.record as Visitor, entryAt: item.entryAt, exitAt: item.exitAt });
+                              else setSelectedUnknown(item);
+                            }}
+                            className={`cursor-pointer transition-colors ${rowTone}`}
+                          >
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black ${item.isVip ? 'bg-amber-100 dark:bg-amber-500/10 text-amber-600' : item.isOverstaying ? 'bg-red-100 dark:bg-red-500/10 text-red-600' : 'bg-blue-100 dark:bg-blue-500/10 text-blue-600'}`}>
+                                  {item.isVip ? <Crown size={18} /> : <User size={18} />}
                                 </div>
-                             </div>
-                          </div>
-                          <div className="text-right flex flex-col items-end gap-1.5">
-                             {item.isOverstaying && (
-                               <div className="bg-red-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-lg tracking-tighter flex items-center gap-1 animate-pulse mb-0.5">
-                                  <AlertTriangle size={10} /> LIMIT EXCEEDED
-                               </div>
-                             )}
-                             <div className="flex items-center justify-end gap-1.5 mb-1">
-                                <span className={`w-1.5 h-1.5 rounded-full ${item.isOverstaying ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse`}></span>
-                                <span className={`text-[9px] font-black uppercase tracking-widest ${item.isOverstaying ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{item.isOverstaying ? 'OVERSTAY' : 'IN PREMISE'}</span>
-                             </div>
-                             <div className="flex items-center justify-end gap-1 text-[10px] text-slate-500 dark:text-white/50">
-                                <Clock size={12} />
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-black text-slate-900 dark:text-white leading-tight">{item.name}</span>
+                                    {item.isVip && <span className="text-[9px] font-black bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-500/30">VIP</span>}
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {item.plate ? (
+                                      <span className="font-mono text-[10px] font-bold bg-slate-100 dark:bg-white/10 px-1.5 py-0.5 rounded text-slate-600 dark:text-white/80">{item.plate}</span>
+                                    ) : (
+                                      <span className="text-[10px] font-bold text-slate-400 dark:text-white/50 uppercase">Walk-in</span>
+                                    )}
+                                    <span className="text-[10px] text-slate-400 dark:text-white/40 uppercase">{item.type}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2">
+                                {item.isOverstaying && (
+                                  <span className="bg-red-500 text-white text-[9px] font-black uppercase px-2 py-1 rounded-lg flex items-center gap-1">
+                                    <AlertTriangle size={12} /> Limit Exceeded
+                                  </span>
+                                )}
+                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full flex items-center gap-1 ${item.isOverstaying ? 'bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'}`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${item.isOverstaying ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+                                  {item.isOverstaying ? 'Overstay' : 'In Premise'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2 text-[12px] text-slate-600 dark:text-white/70">
+                                <Clock size={14} />
                                 <LiveDuration startTime={item.entryAt || ''} isOverstaying={item.isOverstaying} />
-                             </div>
-                          </div>
-                       </div>
-                    </div>
-                ))
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 text-[12px] text-slate-500 dark:text-white/60">
+                              {item.entryAt ? new Date(item.entryAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
             )}
         </div>
       </section>
@@ -820,51 +847,69 @@ export const OperatorDashboard = () => {
                     </button>
                 </div>
             ) : (
-                filteredHistory.map(visitor => {
-                    const isOverstaying = checkIsOverstaying(visitor);
-                    return (
-                        <div 
-                        key={visitor.id} 
-                        onClick={() => setSelectedVisitor({ visitor, entryAt: visitor.timeIn, exitAt: visitor.timeOut })}
-                        className={`group animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-2 rounded-2xl border ${isOverstaying ? 'border-red-500/30 bg-red-50/30 dark:bg-red-900/5' : 'border-slate-200 dark:border-white/5 bg-white dark:bg-[#151520]'} p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-[#1E1E2E] cursor-pointer shadow-sm relative overflow-hidden`}
+              <div className="overflow-x-auto rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f111c] shadow-lg">
+                <table className="min-w-full text-sm">
+                  <thead className="text-[11px] uppercase tracking-[0.2em] text-slate-500 dark:text-white/40 bg-white/70 dark:bg-white/5">
+                    <tr>
+                      <th className="text-left font-black px-5 py-3">Visitor</th>
+                      <th className="text-left font-black px-5 py-3">Mode / Host</th>
+                      <th className="text-left font-black px-5 py-3">Status</th>
+                      <th className="text-left font-black px-5 py-3">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {filteredHistory.map(visitor => {
+                      const isOverstaying = checkIsOverstaying(visitor);
+                      return (
+                        <tr
+                          key={visitor.id}
+                          onClick={() => setSelectedVisitor({ visitor, entryAt: visitor.timeIn, exitAt: visitor.timeOut })}
+                          className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer"
                         >
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-slate-100 dark:bg-white/5 ring-1 ring-slate-200 dark:ring-white/10">
-                                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${visitor.name}`} alt="" className="h-full w-full p-1" />
-                                        <div className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-[#151520] ${visitor.status === VisitorStatus.APPROVED ? (isOverstaying ? 'bg-red-500' : 'bg-emerald-500') : visitor.status === VisitorStatus.REJECTED ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-                                    </div>
-                                    <div className="overflow-hidden">
-                                        <h4 className={`truncate text-xs font-bold transition-colors group-hover:text-blue-500 dark:group-hover:text-blue-400 ${isOverstaying ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>{visitor.name}</h4>
-                                        <div className="mt-1 flex items-center gap-2">
-                                            <span className="bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-tighter text-slate-500 dark:text-white/40 rounded">
-                                                #{visitor.id}
-                                            </span>
-                                            <span className="flex items-center gap-1 text-[9px] font-medium text-slate-400 dark:text-white/30">
-                                                {visitor.transportMode === TransportMode.CAR ? <Car size={10}/> : <div className="flex items-center"><UserIcon size={10}/><Bike size={10}/></div>}
-                                                {visitor.transportMode === TransportMode.CAR ? (visitor.licensePlate || '??-????') : 'Walk-in'}
-                                                <span className="opacity-20 mx-1">|</span>
-                                                <span className="text-purple-600/60 dark:text-purple-400/60 font-bold">{visitor.registeredBy === 'SELF' ? 'Self' : visitor.registeredBy}</span>
-                                            </span>
-                                        </div>
-                                    </div>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-white/5 ring-1 ring-slate-200 dark:ring-white/10">
+                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${visitor.name}`} alt="" className="h-full w-full p-1" />
+                                <div className={`absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-[#151520] ${visitor.status === VisitorStatus.APPROVED ? (isOverstaying ? 'bg-red-500' : 'bg-emerald-500') : visitor.status === VisitorStatus.REJECTED ? 'bg-red-500' : 'bg-blue-500'}`}></div>
+                              </div>
+                              <div>
+                                <div className={`text-xs font-bold ${isOverstaying ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>{visitor.name}</div>
+                                <div className="mt-1 flex items-center gap-2 text-[10px] text-slate-500 dark:text-white/50">
+                                  <span className="font-mono font-black bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded">#{visitor.id}</span>
+                                  {isOverstaying && (
+                                    <span className="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                      <AlertTriangle size={10} /> Overstay
+                                    </span>
+                                  )}
                                 </div>
-                                <div className="flex shrink-0 flex-col items-end gap-2">
-                                    {isOverstaying && (
-                                        <div className="bg-red-600 text-white text-[7px] font-black uppercase px-2 py-0.5 rounded-lg tracking-widest flex items-center gap-1 animate-pulse">
-                                            <AlertTriangle size={8} /> OVERSTAY
-                                        </div>
-                                    )}
-                                    <StatusBadge status={visitor.status} />
-                                    <div className="flex items-center gap-1 text-[8px] font-bold uppercase tracking-tighter text-slate-400 dark:text-white/20">
-                                        <Calendar size={10} />
-                                        {new Date(visitor.visitDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                    </div>
-                                </div>
+                              </div>
                             </div>
-                        </div>
-                    );
-                })
+                          </td>
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-white/60">
+                              <span className="flex items-center gap-1 font-semibold">
+                                {visitor.transportMode === TransportMode.CAR ? <Car size={12}/> : <div className="flex items-center gap-1"><UserIcon size={12}/><Bike size={12}/></div>}
+                                {visitor.transportMode === TransportMode.CAR ? (visitor.licensePlate || '??-????') : 'Walk-in'}
+                              </span>
+                              <span className="text-slate-300 dark:text-white/20">|</span>
+                              <span className="text-purple-600/70 dark:text-purple-400/70 font-bold">{visitor.registeredBy === 'SELF' ? 'Self' : visitor.registeredBy}</span>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <StatusBadge status={visitor.status} />
+                          </td>
+                          <td className="px-5 py-4 text-[12px] text-slate-500 dark:text-white/60">
+                            <div className="flex items-center gap-2">
+                              <Calendar size={12} />
+                              {new Date(visitor.visitDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
         </div>
       </section>
