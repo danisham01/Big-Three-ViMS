@@ -4,13 +4,42 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../store';
 import { GlassCard, Button, StatusBadge, Skeleton, VisitorCardSkeleton, HistoryItemSkeleton, Input, Toast, ConfirmModal } from '../components/GlassComponents';
 import { EntryAnalytics } from '../components/EntryAnalytics';
-import { VisitorStatus, Visitor, UserRole, TransportMode, VipRecord, VipType } from '../types';
+import { VisitorStatus, Visitor, UserRole, TransportMode, VipRecord } from '../types';
 import { VipDetailModal } from './VipPages';
 import { CheckCircle, XCircle, Filter, User, Clock, Briefcase, LogOut, Search, Car, User as UserIcon, ListFilter, X, Calendar, ArrowRight, AlertCircle, Send, BellRing, Bike, Phone, Mail, CreditCard, ExternalLink, CalendarDays, MapPin, Hash, UserCheck, Crown, ShieldCheck, AlertTriangle } from 'lucide-react';
 
 const checkIsOverstaying = (v: Visitor): boolean => {
   if (!v.timeIn || v.timeOut || !v.endDate) return false;
   return new Date() > new Date(v.endDate);
+};
+
+const normalizePlate = (plate?: string) => plate?.toUpperCase().replace(/[^A-Z0-9]/g, '') || '';
+const formatDateTime = (ts?: string) => ts ? new Date(ts).toLocaleString() : 'Not available';
+const formatDuration = (entryAt?: string, exitAt?: string, nowMs?: number) => {
+  if (!entryAt) return 'Not available';
+  const start = new Date(entryAt).getTime();
+  const end = exitAt ? new Date(exitAt).getTime() : (nowMs ?? Date.now());
+  if (isNaN(start) || isNaN(end) || end < start) return 'Not available';
+  const diff = end - start;
+  const hours = Math.floor(diff / 3600000);
+  const minutes = Math.floor((diff % 3600000) / 60000);
+  const seconds = Math.floor((diff % 60000) / 1000);
+  const label = hours ? `${hours}h ${minutes.toString().padStart(2, '0')}m` : `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+  return exitAt ? label : `In progress (${label})`;
+};
+
+type OngoingItem = {
+  id: string;
+  name: string;
+  type: string;
+  plate?: string;
+  transport: TransportMode;
+  entryAt?: string;
+  exitAt?: string;
+  isVip: boolean;
+  isOverstaying: boolean;
+  record: Visitor | VipRecord | null;
+  kind: 'VISITOR' | 'UNKNOWN';
 };
 
 const LiveDuration = ({ startTime, isOverstaying }: { startTime: string, isOverstaying?: boolean }) => {
@@ -35,11 +64,13 @@ const LiveDuration = ({ startTime, isOverstaying }: { startTime: string, isOvers
 }
 
 // Detailed Visitor Modal
-const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: { 
+const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject, entryAt, exitAt }: { 
   visitor: Visitor | null, 
   onClose: () => void,
   onApprove: (id: string) => void,
-  onReject: (id: string, reason: string) => void
+  onReject: (id: string, reason: string) => void,
+  entryAt?: string,
+  exitAt?: string
 }) => {
   const [showRejectInput, setShowRejectInput] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -47,6 +78,8 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
   if (!visitor) return null;
 
   const isOverstaying = checkIsOverstaying(visitor);
+  const nowTick = Date.now();
+  const durationDisplay = formatDuration(entryAt || visitor.timeIn, exitAt || visitor.timeOut, nowTick);
 
   const handleReject = () => {
     if (showRejectInput) {
@@ -223,6 +256,28 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
             </div>
           </div>
 
+          {/* Section: Movement Tracking */}
+          <div className="space-y-3">
+            <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest px-1">Movement Tracking</h3>
+            <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] text-slate-500 dark:text-white/40 font-bold uppercase tracking-widest">Time of Entry</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white/90">{formatDateTime(entryAt || visitor.timeIn)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] text-slate-500 dark:text-white/40 font-bold uppercase tracking-widest">Time of Exit</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white/70">{formatDateTime(exitAt || visitor.timeOut)}</p>
+                </div>
+              </div>
+              <div className="h-[1px] bg-slate-200 dark:bg-white/5 w-full"></div>
+              <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                <Clock size={14} />
+                <p className="text-xs font-black uppercase tracking-widest">Duration in TNB: {durationDisplay}</p>
+              </div>
+            </div>
+          </div>
+
           {/* Action Footer */}
           {visitor.status === VisitorStatus.PENDING && (
             <div className="flex flex-col gap-3 pt-4 border-t border-slate-200 dark:border-white/5">
@@ -261,15 +316,72 @@ const VisitorDetailModal = ({ visitor, onClose, onApprove, onReject }: {
   );
 };
 
+const UnknownDetailModal = ({ record, onClose }: { record: OngoingItem | null; onClose: () => void }) => {
+  const [nowTick, setNowTick] = useState(Date.now());
+
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!record) return null;
+  const duration = formatDuration(record.entryAt, record.exitAt, nowTick);
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+      <div className="max-w-md w-full max-h-[90vh] overflow-y-auto no-scrollbar bg-white dark:bg-[#121217] border border-slate-200 dark:border-white/10 rounded-[2.5rem] shadow-[0_32px_64px_rgba(0,0,0,0.5)] flex flex-col relative animate-in zoom-in-95 duration-300 transition-colors">
+        <button onClick={onClose} className="absolute top-6 right-6 z-20 w-10 h-10 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 flex items-center justify-center text-slate-500 dark:text-white/40 hover:bg-slate-200 dark:hover:text-white transition-colors">
+          <X size={20} />
+        </button>
+
+        <div className="p-8 pb-4 text-center">
+          <div className="bg-slate-900 dark:bg-white text-white dark:text-black px-4 py-2 rounded-xl font-mono font-black text-xl tracking-widest inline-block mb-3 shadow-xl">
+            {record.plate || 'UNKNOWN'}
+          </div>
+          <h2 className="text-xl font-black text-slate-900 dark:text-white">Unknown Vehicle</h2>
+          <p className="text-slate-500 dark:text-white/30 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">No record found</p>
+        </div>
+
+        <div className="p-8 pt-4 space-y-6">
+          <div className="bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[9px] text-slate-500 dark:text-white/40 font-bold uppercase tracking-widest">Time of Entry</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white/90">{formatDateTime(record.entryAt)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[9px] text-slate-500 dark:text-white/40 font-bold uppercase tracking-widest">Time of Exit</p>
+                <p className="text-sm font-bold text-slate-900 dark:text-white/70">{formatDateTime(record.exitAt)}</p>
+              </div>
+            </div>
+            <div className="h-[1px] bg-slate-200 dark:bg-white/5 w-full"></div>
+            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+              <Clock size={14} />
+              <p className="text-xs font-black uppercase tracking-widest">Duration in TNB: {duration}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-8 pt-0">
+          <Button variant="secondary" className="w-full h-12 rounded-2xl font-black uppercase tracking-widest text-[11px]" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const OperatorDashboard = () => {
   const navigate = useNavigate();
-  const { visitors, updateVisitorStatus, currentUser, logout, vipRecords, deactivateVip, updateVip } = useStore();
+  const { visitors, updateVisitorStatus, currentUser, logout, vipRecords, deactivateVip, updateVip, lprScanRecords } = useStore();
   const [initialLoading, setInitialLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [toast, setToast] = useState({ show: false, message: '' });
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
-  const [selectedVisitor, setSelectedVisitor] = useState<Visitor | null>(null);
+  const [selectedVisitor, setSelectedVisitor] = useState<{ visitor: Visitor; entryAt?: string; exitAt?: string } | null>(null);
+  const [selectedUnknown, setSelectedUnknown] = useState<OngoingItem | null>(null);
   const [selectedVip, setSelectedVip] = useState<VipRecord | null>(null);
   const [statusFilter, setStatusFilter] = useState<VisitorStatus | 'ALL'>('ALL');
   const [transportFilter, setTransportFilter] = useState<TransportMode | 'ALL'>('ALL');
@@ -300,36 +412,90 @@ export const OperatorDashboard = () => {
   }, [visitors, searchQuery]);
 
   const liveVisitors = useMemo(() => {
+    const merged = new Map<string, {
+      id: string;
+      name: string;
+      type: string;
+      plate?: string;
+      transport: TransportMode;
+      entryAt?: string;
+      exitAt?: string;
+      isVip: boolean;
+      isOverstaying: boolean;
+      record: Visitor | VipRecord | null;
+    }>();
+
     // 1. Regular Visitors: timeIn exists, timeOut does not
-    const regular = visitors.filter(v => v.timeIn && !v.timeOut).map(v => ({
+    visitors.filter(v => v.timeIn && !v.timeOut).forEach(v => {
+      const norm = normalizePlate(v.licensePlate);
+      const lpr = norm ? lprScanRecords[norm] : undefined;
+      const entryAt = lpr?.entryAt || v.timeIn || undefined;
+      const exitAt = lpr?.exitAt || v.timeOut || undefined;
+      merged.set(norm || v.id, {
         id: v.id,
         name: v.name,
         type: 'VISITOR',
         plate: v.licensePlate,
         transport: v.transportMode,
-        entryTime: v.timeIn!,
+        entryAt,
+        exitAt,
         isVip: false,
         isOverstaying: checkIsOverstaying(v),
-        record: v
-    }));
+        record: v,
+        kind: 'VISITOR'
+      });
+    });
 
     // 2. VIPs: lastEntryTime exists, and (lastExitTime missing OR entry > exit)
-    const vips = vipRecords.filter(v => 
+    vipRecords.filter(v => 
         v.lastEntryTime && (!v.lastExitTime || new Date(v.lastEntryTime) > new Date(v.lastExitTime))
-    ).map(v => ({
+    ).forEach(v => {
+      const norm = normalizePlate(v.licensePlate);
+      const lpr = norm ? lprScanRecords[norm] : undefined;
+      const entryAt = lpr?.entryAt || v.lastEntryTime || undefined;
+      const exitAt = lpr?.exitAt || v.lastExitTime || undefined;
+      merged.set(norm || v.id, {
         id: v.id,
         name: v.name,
         type: v.vipType,
         plate: v.licensePlate,
         transport: TransportMode.CAR, // VIPs typically use cars
-        entryTime: v.lastEntryTime!,
+        entryAt,
+        exitAt,
         isVip: true,
         isOverstaying: false, // Assume VIPs are flexible for now
-        record: v
-    }));
+        record: v,
+        kind: 'VISITOR'
+      });
+    });
 
-    return [...vips, ...regular].sort((a, b) => new Date(b.entryTime).getTime() - new Date(a.entryTime).getTime());
-  }, [visitors, vipRecords]);
+    // 3. LPR-only records: entryAt exists, exitAt missing
+    Object.values(lprScanRecords)
+      .filter(rec => rec.entryAt && !rec.exitAt && rec.outcome !== 'BLOCKED')
+      .forEach(rec => {
+        const norm = normalizePlate(rec.plate);
+        const existing = merged.get(norm);
+        if (existing) {
+          existing.entryAt = rec.entryAt || existing.entryAt;
+          return;
+        }
+        merged.set(norm || `lpr-${rec.plate}`, {
+          id: `lpr-${rec.plate}`,
+          name: 'UNIDENTIFIED',
+          type: 'UNKNOWN',
+          plate: rec.plate,
+          transport: TransportMode.CAR,
+          entryAt: rec.entryAt!,
+          exitAt: rec.exitAt,
+          isVip: false,
+          isOverstaying: false,
+          record: null,
+          kind: 'UNKNOWN'
+        });
+      });
+
+    return Array.from(merged.values()).sort((a, b) => new Date(b.entryAt || 0).getTime() - new Date(a.entryAt || 0).getTime());
+  }, [visitors, vipRecords, lprScanRecords]);
 
   const filteredHistory = useMemo(() => {
     return visitors.filter(v => {
@@ -380,10 +546,17 @@ export const OperatorDashboard = () => {
       />
 
       <VisitorDetailModal 
-        visitor={selectedVisitor} 
+        visitor={selectedVisitor?.visitor || null} 
+        entryAt={selectedVisitor?.entryAt}
+        exitAt={selectedVisitor?.exitAt}
         onClose={() => setSelectedVisitor(null)}
         onApprove={(id) => handleAction(id, VisitorStatus.APPROVED)}
         onReject={(id, reason) => handleAction(id, VisitorStatus.REJECTED, reason)}
+      />
+
+      <UnknownDetailModal 
+        record={selectedUnknown} 
+        onClose={() => setSelectedUnknown(null)} 
       />
 
       <VipDetailModal 
@@ -443,29 +616,6 @@ export const OperatorDashboard = () => {
         })}
       </div>
 
-      <div className="mb-8 sticky top-4 z-30">
-        <GlassCard className="!p-2 !bg-white/90 dark:!bg-[#1E1E2E]/80 backdrop-blur-2xl border-slate-200 dark:border-white/10 shadow-2xl">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search by name, code, plate, or host..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl py-3.5 pl-11 pr-11 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-400 dark:placeholder:text-white/20"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white transition-colors"
-              >
-                <X size={18} />
-              </button>
-            )}
-          </div>
-        </GlassCard>
-      </div>
-
       <section className="mb-12">
         <div className="flex items-center gap-2 mb-5">
             <div className="w-1.5 h-4 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
@@ -490,7 +640,8 @@ export const OperatorDashboard = () => {
                       key={idx}
                       onClick={() => {
                           if (item.isVip) setSelectedVip(item.record as VipRecord);
-                          else setSelectedVisitor(item.record as Visitor);
+                          else if (item.record) setSelectedVisitor({ visitor: item.record as Visitor, entryAt: item.entryAt, exitAt: item.exitAt });
+                          else setSelectedUnknown(item);
                       }}
                       className={`group relative overflow-hidden rounded-3xl border ${item.isOverstaying ? 'border-red-500/50 bg-red-50/50 dark:bg-red-900/10 shadow-red-500/10' : 'border-emerald-100 dark:border-emerald-500/20 bg-white dark:bg-[#1E1E2E]'} p-5 shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer`}
                     >
@@ -523,7 +674,7 @@ export const OperatorDashboard = () => {
                              </div>
                              <div className="flex items-center justify-end gap-1 text-[10px] text-slate-500 dark:text-white/50">
                                 <Clock size={12} />
-                                <LiveDuration startTime={item.entryTime} isOverstaying={item.isOverstaying} />
+                                <LiveDuration startTime={item.entryAt || ''} isOverstaying={item.isOverstaying} />
                              </div>
                           </div>
                        </div>
@@ -568,7 +719,7 @@ export const OperatorDashboard = () => {
                         isProcessing={processingId === visitor.id}
                         onApprove={() => handleAction(visitor.id, VisitorStatus.APPROVED)} 
                         onReject={(reason) => handleAction(visitor.id, VisitorStatus.REJECTED, reason)}
-                        onClick={() => setSelectedVisitor(visitor)}
+                        onClick={() => setSelectedVisitor({ visitor, entryAt: visitor.timeIn, exitAt: visitor.timeOut })}
                     />
                 ))
             )}
@@ -583,6 +734,28 @@ export const OperatorDashboard = () => {
             </div>
             {!initialLoading && <span className="text-[10px] text-slate-400 dark:text-white/20 font-bold uppercase tracking-wider">{filteredHistory.length} Total Records</span>}
         </div>
+              <div className="mb-8 sticky top-4 z-30">
+        <GlassCard className="!p-2 !bg-white/90 dark:!bg-[#1E1E2E]/80 backdrop-blur-2xl border-slate-200 dark:border-white/10 shadow-2xl">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" size={18} />
+            <input 
+              type="text" 
+              placeholder="Search by name, code, plate, or host..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl py-3.5 pl-11 pr-11 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-400 dark:placeholder:text-white/20"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30 hover:text-slate-600 dark:hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
+        </GlassCard>
+      </div>
 
         <div className="space-y-4 mb-8">
             <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -652,7 +825,7 @@ export const OperatorDashboard = () => {
                     return (
                         <div 
                         key={visitor.id} 
-                        onClick={() => setSelectedVisitor(visitor)}
+                        onClick={() => setSelectedVisitor({ visitor, entryAt: visitor.timeIn, exitAt: visitor.timeOut })}
                         className={`group animate-in fade-in slide-in-from-bottom-2 flex flex-col gap-2 rounded-2xl border ${isOverstaying ? 'border-red-500/30 bg-red-50/30 dark:bg-red-900/5' : 'border-slate-200 dark:border-white/5 bg-white dark:bg-[#151520]'} p-4 transition-all duration-300 hover:bg-slate-50 dark:hover:bg-[#1E1E2E] cursor-pointer shadow-sm relative overflow-hidden`}
                         >
                             <div className="flex items-center justify-between">

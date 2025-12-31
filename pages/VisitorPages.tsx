@@ -234,7 +234,7 @@ export const VisitorLanding = () => {
       <div className="flex flex-col items-center justify-center mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
         <Logo size="xl" className="mb-6" />
         <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 text-center">Welcome to ViMS</h1>
-        <p className="text-slate-500 dark:text-white/40 text-center text-sm font-medium">(Visitor management system)</p>
+        <p className="text-slate-500 dark:text-white/40 text-center text-sm font-medium">(Visitor Management System)</p>
         <p className="text-slate-600 dark:text-white/60 text-center text-sm mt-4 max-w-[200px]">Please select your sign-in method to get started.</p>
       </div>
 
@@ -999,7 +999,7 @@ export const VisitorStatusCheck = () => {
                 <div className="w-16 h-16 bg-blue-100 dark:bg-blue-600/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-500 mx-auto mb-4 border border-blue-200 dark:border-blue-500/20">
                     <Search size={32} />
                 </div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Track Application</h1>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Check Appointment Status</h1>
                 <p className="text-slate-500 dark:text-white/50 text-sm">Enter your 5-digit unique access code to check your approval status.</p>
             </div>
 

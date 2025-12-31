@@ -182,6 +182,18 @@ export interface LPRLog {
   designation?: string;
 }
 
+export interface LprScanRecord {
+  plate: string;
+  status: 'KNOWN' | 'UNKNOWN';
+  entryAt?: string;
+  exitAt?: string;
+  attemptedAt?: string;
+  outcome?: 'PASSED' | 'BLOCKED' | 'UNKNOWN' | 'HOLD';
+  reason?: string;
+  gate?: 'ENTRY' | 'EXIT';
+  lastSeenAt: string;
+}
+
 export interface Stats {
   totalVisitors: number;
   currentlyInside: number;
